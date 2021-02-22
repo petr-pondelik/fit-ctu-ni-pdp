@@ -7,7 +7,7 @@ BINARY=$(OUTPUT_DIR)/output.out
 .PHONY: run
 
 run: compile
-	./$(BINARY)
+#	./$(BINARY)
 
 compile: $(BINARY)
 
