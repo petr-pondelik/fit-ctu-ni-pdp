@@ -78,7 +78,53 @@ public:
         return x >= 0 && x < this->k && y >= 0 && y < this->k;
     }
 
-    bool canBeTaken(int x, int y) {
+    bool isTileEmpty(int x, int y) {
+        return this->getTile(x,y) == TileStatus::Empty;
+    }
+
+    bool canMoveRookTo(int x, int y) {
+//        cout << "CanMoveRookTo" << endl;
+        int xDiff = x - this->rookPosition.first;
+        int yDiff = y - this->rookPosition.second;
+//        cout << "Destination: [" + to_string(x) + "," + to_string(y) + "]" << endl;
+
+        if (xDiff > 0) {
+            for (int i = 1; i < xDiff; ++i) {
+//                cout << "Path: [" + to_string(this->rookPosition.first + i) + "," + to_string(this->rookPosition.second) + "]" << endl;
+                if (!this->isTileEmpty(this->rookPosition.first + i, this->rookPosition.second)) {
+                    return false;
+                }
+            }
+        } else if (xDiff < 0) {
+            for (int i = xDiff; i < -1; ++i) {
+//                cout << "Path: [" + to_string(this->rookPosition.first + i) + "," + to_string(this->rookPosition.second) + "]" << endl;
+                if (!this->isTileEmpty(this->rookPosition.first + i, this->rookPosition.second)) {
+                    return false;
+                }
+            }
+        } else if (yDiff > 0) {
+            for (int i = 1; i < yDiff ; ++i) {
+//                cout << "Path: [" + to_string(this->rookPosition.first) + "," + to_string(this->rookPosition.second + i) + "]" << endl;
+                if (!this->isTileEmpty(this->rookPosition.first, this->rookPosition.second + i)) {
+                    return false;
+                }
+            }
+        } else if (yDiff < 0) {
+            for (int i = yDiff; i < -1; ++i) {
+//                cout << "Path: [" + to_string(this->rookPosition.first) + "," + to_string(this->rookPosition.second + i) + "]" << endl;
+                if (!this->isTileEmpty(this->rookPosition.first + i, this->rookPosition.second + i)) {
+                    return false;
+                }
+            }
+        }
+
+        return (this->getTile(x,y) == TileStatus::Empty) || (this->getTile(x,y) == TileStatus::Pawn);
+    }
+
+    bool canMoveKnightTo(int x, int y) {
+        if (!this->fitsDimensions(x,y)) {
+            return false;
+        }
         return (this->getTile(x,y) == TileStatus::Empty) || (this->getTile(x,y) == TileStatus::Pawn);
     }
 
@@ -101,12 +147,16 @@ public:
         return this->rookPosition;
     }
 
-    void printRookPosition() {
-        cout << "Rook position: [" + to_string(this->getRookPosition().first) + "," + to_string(this->getRookPosition().second) + "]" << endl;
-    }
-
     pair<int,int> getKnightPosition() {
         return this->knightPosition;
+    }
+
+    void printTile(int x, int y) {
+        cout << "[" << x << "," << y << "]: " << this->getTile(x,y) << endl;
+    }
+
+    void printRookPosition() {
+        cout << "Rook position: [" + to_string(this->getRookPosition().first) + "," + to_string(this->getRookPosition().second) + "]" << endl;
     }
 
     void printKnightPosition() {
@@ -150,13 +200,13 @@ private:
         this->chessBoard->printRookPosition();
         pair<int,int> position = this->chessBoard->getRookPosition();
         for (int i = 0; i < this->chessBoard->getDimension(); ++i) {
-            if (this->chessBoard->canBeTaken(position.first, i)) {
-                int tileX = this->chessBoard->getTile(position.first, i, true);
-                cout << "TileX: " + to_string(tileX) << endl;
+            if (this->chessBoard->canMoveRookTo(position.first, i)) {
+                int tileX = this->chessBoard->getTile(position.first, i);
+                this->chessBoard->printTile(position.first, i);
             }
-            if (this->chessBoard->canBeTaken(i, position.second)) {
-                int tileY = this->chessBoard->getTile(i, position.second, true);
-                cout << "TileY: " + to_string(tileY) << endl;
+            if (this->chessBoard->canMoveRookTo(i, position.second)) {
+                int tileY = this->chessBoard->getTile(i, position.second);
+                this->chessBoard->printTile(i, position.second);
             }
         }
         vector<int> next;
@@ -171,8 +221,8 @@ private:
         for (int i = 0; i < 8; ++i) {
             int xRes = position.first - this->knightMoves[i].first;
             int yRes = position.second - this->knightMoves[i].second;
-            if (this->chessBoard->fitsDimensions(xRes, yRes)) {
-                cout << this->chessBoard->getTile(xRes, yRes) << endl;
+            if (this->chessBoard->canMoveKnightTo(xRes, yRes)) {
+                this->chessBoard->printTile(xRes,yRes);
             }
         }
         vector<int> next;
