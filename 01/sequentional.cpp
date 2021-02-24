@@ -11,20 +11,20 @@ enum TileStatus {
     Rook, Knight, Pawn, Empty
 };
 
-bool compareMoves(const pair<pair<int, int>, int> &a, const pair<pair<int, int>, int> &b) {
+bool compareMoves(const pair<pair<short, short>, short> &a, const pair<pair<short, short>, short> &b) {
     return a.second > b.second;
 }
 
 class ChessBoard {
 
 private:
+    short k;
     // Array of size k^2 mapped to 2D array
-    int k;
-    vector<int> board;
-    pair<int, int> rookPosition;
-    pair<int, int> knightPosition;
+    vector<short> board;
+    pair<short, short> rookPosition;
+    pair<short, short> knightPosition;
 
-    int mapToTileStatus(char input) {
+    short mapToTileStatus(char input) {
         switch (input) {
             case '-':
                 return 3;
@@ -39,7 +39,7 @@ private:
         }
     }
 
-    char tileStatusToStr(int status) {
+    char tileStatusToStr(short status) {
         switch (status) {
             case 3:
                 return '-';
@@ -55,14 +55,17 @@ private:
     }
 
 public:
+    short turn;
+
     ChessBoard(void) {}
 
-    ChessBoard(int k, string &boardStr) {
+    ChessBoard(short k, string &boardStr) {
         cout << "ChessBoard" << endl;
         this->k = k;
-        for (int i = 0; i < k; i++) {
-            for (int j = 0; j < k; j++) {
-                int tileStatus = this->mapToTileStatus(boardStr[this->mapPosition(i, j)]);
+        this->turn = TileStatus::Rook;
+        for (short i = 0; i < k; i++) {
+            for (short j = 0; j < k; j++) {
+                short tileStatus = this->mapToTileStatus(boardStr[this->mapPosition(i, j)]);
                 if (tileStatus == TileStatus::Rook) {
                     this->rookPosition = make_pair(i, j);
                 } else if (tileStatus == TileStatus::Knight) {
@@ -74,42 +77,42 @@ public:
         this->print();
     };
 
-    int getDimension() {
+    short getDimension() {
         return this->k;
     }
 
-    bool fitsDimensions(int x, int y) {
+    bool fitsDimensions(short x, short y) {
         return x >= 0 && x < this->k && y >= 0 && y < this->k;
     }
 
-    bool isTileEmpty(int x, int y) {
+    bool isTileEmpty(short x, short y) {
         return this->getTile(x, y) == TileStatus::Empty;
     }
 
-    bool canMoveRookTo(int x, int y) {
-        int xDiff = x - this->rookPosition.first;
-        int yDiff = y - this->rookPosition.second;
+    bool canMoveRookTo(short x, short y) {
+        short xDiff = x - this->rookPosition.first;
+        short yDiff = y - this->rookPosition.second;
 
         if (xDiff > 0) {
-            for (int i = 1; i < xDiff; ++i) {
+            for (short i = 1; i < xDiff; ++i) {
                 if (!this->isTileEmpty(this->rookPosition.first + i, this->rookPosition.second)) {
                     return false;
                 }
             }
         } else if (xDiff < 0) {
-            for (int i = xDiff; i < -1; ++i) {
+            for (short i = xDiff; i < -1; ++i) {
                 if (!this->isTileEmpty(this->rookPosition.first + i, this->rookPosition.second)) {
                     return false;
                 }
             }
         } else if (yDiff > 0) {
-            for (int i = 1; i < yDiff; ++i) {
+            for (short i = 1; i < yDiff; ++i) {
                 if (!this->isTileEmpty(this->rookPosition.first, this->rookPosition.second + i)) {
                     return false;
                 }
             }
         } else if (yDiff < 0) {
-            for (int i = yDiff; i < -1; ++i) {
+            for (short i = yDiff; i < -1; ++i) {
                 if (!this->isTileEmpty(this->rookPosition.first + i, this->rookPosition.second + i)) {
                     return false;
                 }
@@ -119,37 +122,37 @@ public:
         return (this->getTile(x, y) == TileStatus::Empty) || (this->getTile(x, y) == TileStatus::Pawn);
     }
 
-    bool canMoveKnightTo(int x, int y) {
+    bool canMoveKnightTo(short x, short y) {
         if (!this->fitsDimensions(x, y)) {
             return false;
         }
         return (this->getTile(x, y) == TileStatus::Empty) || (this->getTile(x, y) == TileStatus::Pawn);
     }
 
-    int getSize() {
+    short getSize() {
         return this->k * this->k;
     }
 
-    int mapPosition(int x, int y) {
+    short mapPosition(short x, short y) {
         return x * this->k + y;
     }
 
-    int getTile(int x, int y, bool print = false) {
+    short getTile(short x, short y, bool print = false) {
         if (print) {
             cout << "[" + to_string(x) + "," + to_string(y) + "]" << endl;
         }
         return this->board[this->mapPosition(x, y)];
     }
 
-    pair<int, int> getRookPosition() {
+    pair<short, short> getRookPosition() {
         return this->rookPosition;
     }
 
-    pair<int, int> getKnightPosition() {
+    pair<short, short> getKnightPosition() {
         return this->knightPosition;
     }
 
-    void printTile(int x, int y) {
+    void printTile(short x, short y) {
         cout << "[" << x << "," << y << "]: " << this->getTile(x, y) << endl;
     }
 
@@ -164,8 +167,8 @@ public:
     }
 
     void print() {
-        for (int i = 0; i < k; ++i) {
-            for (int j = 0; j < k; ++j) {
+        for (short i = 0; i < k; ++i) {
+            for (short j = 0; j < k; ++j) {
                 cout << this->tileStatusToStr(this->board[this->mapPosition(i, j)]);
             }
             cout << endl;
@@ -176,37 +179,30 @@ public:
 
 class Game {
 
-private:
-    int maxDepth;
+public:
+    // ChessBoard represents configuration
+    ChessBoard chessBoard;
 
-    pair<int, int> knightMoves[8] = {
+    pair<short, short> knightMoves[8] = {
             make_pair(-2, -1), make_pair(-2, 1),
             make_pair(-1, 2), make_pair(1, 2),
             make_pair(2, -1), make_pair(2, 1),
             make_pair(-1, -2), make_pair(1, -2),
     };
 
-    // ChessBoard represents configuration
-    ChessBoard *chessBoard;
-
-    int turn;
-
-    int solution;
-    int bestSolution;
-
-    bool isPawnOnAxes(int x, int y) {
-        for (int i = 0; i < this->chessBoard->getDimension(); ++i) {
-            if (this->chessBoard->getTile(x, i) == TileStatus::Pawn) {
+    bool isPawnOnAxes(short x, short y) {
+        for (short i = 0; i < this->chessBoard.getDimension(); ++i) {
+            if (this->chessBoard.getTile(x, i) == TileStatus::Pawn) {
                 return true;
             }
-            if (this->chessBoard->getTile(i, y) == TileStatus::Pawn) {
+            if (this->chessBoard.getTile(i, y) == TileStatus::Pawn) {
                 return true;
             }
         }
         return false;
     }
 
-    int valRook(int x, int y, int tile) {
+    short valRook(short x, short y, short tile) {
         if (tile == TileStatus::Pawn) {
             return 2;
         }
@@ -216,128 +212,94 @@ private:
         return 0;
     }
 
-    vector<pair<pair < int, int>, int>> nextRook() {
-//        TODO
+    vector<pair<pair < short, short>, short>> nextRook() {
         cout << endl << "NextRook" << endl;
-        vector < pair < pair < int, int >, int >> nextMoves;
-        this->chessBoard->printRookPosition();
-
-        pair<int, int> position = this->chessBoard->getRookPosition();
-
-        for (int i = 0; i < this->chessBoard->getDimension(); ++i) {
-            if (this->chessBoard->canMoveRookTo(position.first, i)) {
-                int tile = this->chessBoard->getTile(position.first, i);
-                this->chessBoard->printTile(position.first, i);
-                int val = this->valRook(position.first, i, tile);
-//                cout << "Val: " << val << endl;
+        vector < pair < pair < short, short >, short >> nextMoves;
+        this->chessBoard.printRookPosition();
+        pair<short, short> position = this->chessBoard.getRookPosition();
+        for (short i = 0; i < this->chessBoard.getDimension(); ++i) {
+            if (this->chessBoard.canMoveRookTo(position.first, i)) {
+                short tile = this->chessBoard.getTile(position.first, i);
+                this->chessBoard.printTile(position.first, i);
+                short val = this->valRook(position.first, i, tile);
                 nextMoves.push_back(make_pair(make_pair(position.first, i), val));
             }
-            if (this->chessBoard->canMoveRookTo(i, position.second)) {
-                int tile = this->chessBoard->getTile(i, position.second);
-                this->chessBoard->printTile(i, position.second);
-                int val = this->valRook(i, position.second, tile);
-//                cout << "Val: " << val << endl;
+            if (this->chessBoard.canMoveRookTo(i, position.second)) {
+                short tile = this->chessBoard.getTile(i, position.second);
+                this->chessBoard.printTile(i, position.second);
+                short val = this->valRook(i, position.second, tile);
                 nextMoves.push_back(make_pair(make_pair(i, position.second), val));
             }
         }
-
         sort(nextMoves.begin(), nextMoves.end(), compareMoves);
-
-        cout << endl;
-
-        for (unsigned int i = 0; i < nextMoves.size(); ++i) {
-            this->chessBoard->printTile(nextMoves[i].first.first, nextMoves[i].first.second);
-            cout << "Val: " << nextMoves[i].second << endl;
-        }
-
         return nextMoves;
     }
 
-    int valKnight(int tile) {
+    short valKnight(short tile) {
         if (tile == TileStatus::Pawn) {
             return 2;
         }
         return 0;
     }
 
-    vector<pair<pair < int, int>, int>> nextKnight() {
-        //        TODO
+    vector<pair<pair < short, short>, short>> nextKnight() {
         cout << endl << "NextKnight" << endl;
-        vector < pair < pair < int, int >, int >> nextMoves;
-
-        this->chessBoard->printKnightPosition();
-
-        pair<int, int> position = this->chessBoard->getKnightPosition();
-
-        for (int i = 0; i < 8; ++i) {
-            int x = position.first - this->knightMoves[i].first;
-            int y = position.second - this->knightMoves[i].second;
-            if (this->chessBoard->canMoveKnightTo(x, y)) {
-                this->chessBoard->printTile(x, y);
-                int tile = this->chessBoard->getTile(x, y);
-                int val = this->valKnight(tile);
-//            cout << "Val: " << val << endl;
+        vector < pair < pair < short, short >, short >> nextMoves;
+        this->chessBoard.printKnightPosition();
+        pair<short, short> position = this->chessBoard.getKnightPosition();
+        for (short i = 0; i < 8; ++i) {
+            short x = position.first - this->knightMoves[i].first;
+            short y = position.second - this->knightMoves[i].second;
+            if (this->chessBoard.canMoveKnightTo(x, y)) {
+                this->chessBoard.printTile(x, y);
+                short tile = this->chessBoard.getTile(x, y);
+                short val = this->valKnight(tile);
                 nextMoves.push_back(make_pair(make_pair(x, y), val));
             }
         }
-
         sort(nextMoves.begin(), nextMoves.end(), compareMoves);
-
-        cout << endl;
-
-        for (unsigned int i = 0; i < nextMoves.size(); ++i) {
-            this->chessBoard->printTile(nextMoves[i].first.first, nextMoves[i].first.second);
-            cout << "Val: " << nextMoves[i].second << endl;
-        }
-
         return nextMoves;
     }
 
-    vector<pair<pair < int, int>, int>> next() {
-        if (this->turn == TileStatus::Rook) {
+    vector<pair<pair < short, short>, short>> next() {
+        if (this->chessBoard.turn == TileStatus::Rook) {
             return this->nextRook();
         }
         return this->nextKnight();
-//        this->nextRook();
-//        return this->nextKnight();
     }
 
-public:
-    Game(int maxDepth) {
-        this->maxDepth = maxDepth;
-    }
-
-    void initGame(int k, string &boardStr) {
+    void initGame(short k, string &boardStr) {
         cout << "Init game" << endl;
-        this->turn = TileStatus::Rook;
-        this->chessBoard = new ChessBoard(k, boardStr);
+        this->chessBoard = ChessBoard(k, boardStr);
     }
 
     bool isFinal() {
 //        TODO
         return false;
     }
-
-    void solve() {
-        vector<pair<pair<int, int>, int>> moves = this->next();
-
-    };
 };
 
-int main(int argc, char *argv[]) {
-    int k, maxDepth;
+void solve(Game game) {
+    vector < pair < pair < short, short >, short >> moves = game.next();
+    cout << endl;
+    for (unsigned short i = 0; i < moves.size(); ++i) {
+        game.chessBoard.printTile(moves[i].first.first, moves[i].first.second);
+        cout << "Val: " << moves[i].second << endl;
+    }
+}
 
-    cin >> k;
-    cin >> maxDepth;
+int main(int argc, char *argv[]) {
+    short k, maxDepth;
+    cin >> k >> maxDepth;
 
     string tmp;
     string boardStr;
-    for (int i = 0; i < k; ++i) {
+    for (short i = 0; i < k; ++i) {
         cin >> tmp;
         boardStr += tmp;
     }
 
-    Game *game = new Game(maxDepth);
-    game->initGame(k, boardStr);
-    game->solve();
+    Game game = Game();
+    game.initGame(k, boardStr);
+    solve(game);
 }
