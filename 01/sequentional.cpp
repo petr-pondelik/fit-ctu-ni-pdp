@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 #include <bits/stdc++.h>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
@@ -18,11 +20,35 @@ bool compareMoves(const pair<pair<short, short>, short> &a, const pair<pair<shor
 class ChessBoard {
 
 private:
-    short k;
+
+public:
     // Array of size k^2 mapped to 2D array
     vector<short> board;
     pair<short, short> rookPosition;
     pair<short, short> knightPosition;
+    short k, pawnsCnt, lowerBound, upperBound;
+
+    ChessBoard(void) {}
+
+    ChessBoard(short &k, short &upperBound, string &boardStr) {
+        this->k = k;
+        this->pawnsCnt = 0;
+        for (short i = 0; i < k; i++) {
+            for (short j = 0; j < k; j++) {
+                short tileStatus = this->mapToTileStatus(boardStr[this->mapPosition(i, j)]);
+                if (tileStatus == TileStatus::Rook) {
+                    this->rookPosition = make_pair(i, j);
+                } else if (tileStatus == TileStatus::Knight) {
+                    this->knightPosition = make_pair(i, j);
+                } else if (tileStatus == TileStatus::Pawn) {
+                    this->pawnsCnt++;
+                }
+                this->board.emplace_back(tileStatus);
+            }
+        }
+        this->lowerBound = this->pawnsCnt;
+        this->upperBound = upperBound;
+    };
 
     short mapToTileStatus(char input) {
         switch (input) {
@@ -54,29 +80,6 @@ private:
         }
     }
 
-public:
-    short turn;
-
-    ChessBoard(void) {}
-
-    ChessBoard(short k, string &boardStr) {
-        cout << "ChessBoard" << endl;
-        this->k = k;
-        this->turn = TileStatus::Rook;
-        for (short i = 0; i < k; i++) {
-            for (short j = 0; j < k; j++) {
-                short tileStatus = this->mapToTileStatus(boardStr[this->mapPosition(i, j)]);
-                if (tileStatus == TileStatus::Rook) {
-                    this->rookPosition = make_pair(i, j);
-                } else if (tileStatus == TileStatus::Knight) {
-                    this->knightPosition = make_pair(i, j);
-                }
-                this->board.emplace_back(tileStatus);
-            }
-        }
-        this->print();
-    };
-
     short getDimension() {
         return this->k;
     }
@@ -90,6 +93,10 @@ public:
     }
 
     bool canMoveRookTo(short x, short y) {
+        if (!this->fitsDimensions(x, y)) {
+            return false;
+        }
+
         short xDiff = x - this->rookPosition.first;
         short yDiff = y - this->rookPosition.second;
 
@@ -138,18 +145,20 @@ public:
     }
 
     short getTile(short x, short y, bool print = false) {
-        if (print) {
-            cout << "[" + to_string(x) + "," + to_string(y) + "]" << endl;
-        }
+//        if (print) {
+//            cout << "[" + to_string(x) + "," + to_string(y) + "]" << endl;
+//        }
         return this->board[this->mapPosition(x, y)];
     }
 
-    pair<short, short> getRookPosition() {
-        return this->rookPosition;
-    }
-
-    pair<short, short> getKnightPosition() {
-        return this->knightPosition;
+    void move(pair<short, short> from, pair<short, short> to) {
+        short stone = this->getTile(from.first, from.second);
+        this->board[this->mapPosition(from.first, from.second)] = TileStatus::Empty;
+        if (this->getTile(to.first, to.second) == TileStatus::Pawn) {
+//            cout << endl << endl << "PAWN KILLED" << endl << endl;
+            this->pawnsCnt--;
+        }
+        this->board[this->mapPosition(to.first, to.second)] = stone;
     }
 
     void printTile(short x, short y) {
@@ -157,22 +166,27 @@ public:
     }
 
     void printRookPosition() {
-        cout << "Rook position: [" + to_string(this->getRookPosition().first) + "," +
-                to_string(this->getRookPosition().second) + "]" << endl;
+        cout << "Rook position: [" + to_string(this->rookPosition.first) + "," +
+                to_string(this->rookPosition.second) + "]" << endl;
     }
 
     void printKnightPosition() {
-        cout << "Knight position: [" + to_string(this->getKnightPosition().first) + "," +
-                to_string(this->getKnightPosition().second) + "]" << endl;
+        cout << "Knight position: [" + to_string(this->knightPosition.first) + "," +
+                to_string(this->knightPosition.second) + "]" << endl;
     }
 
     void print() {
+        cout << endl;
+        cout << "Pawns: " << this->pawnsCnt << endl;
+        cout << "Lower bound: " << this->lowerBound << endl;
+        cout << "Upper bound: " << this->upperBound << endl;
         for (short i = 0; i < k; ++i) {
             for (short j = 0; j < k; ++j) {
                 cout << this->tileStatusToStr(this->board[this->mapPosition(i, j)]);
             }
             cout << endl;
         }
+        cout << endl;
     }
 };
 
@@ -182,6 +196,8 @@ class Game {
 public:
     // ChessBoard represents configuration
     ChessBoard chessBoard;
+
+    short turn;
 
     pair<short, short> knightMoves[8] = {
             make_pair(-2, -1), make_pair(-2, 1),
@@ -213,20 +229,16 @@ public:
     }
 
     vector<pair<pair < short, short>, short>> nextRook() {
-        cout << endl << "NextRook" << endl;
         vector < pair < pair < short, short >, short >> nextMoves;
-        this->chessBoard.printRookPosition();
-        pair<short, short> position = this->chessBoard.getRookPosition();
+        pair<short, short> position = this->chessBoard.rookPosition;
         for (short i = 0; i < this->chessBoard.getDimension(); ++i) {
             if (this->chessBoard.canMoveRookTo(position.first, i)) {
                 short tile = this->chessBoard.getTile(position.first, i);
-                this->chessBoard.printTile(position.first, i);
                 short val = this->valRook(position.first, i, tile);
                 nextMoves.push_back(make_pair(make_pair(position.first, i), val));
             }
             if (this->chessBoard.canMoveRookTo(i, position.second)) {
                 short tile = this->chessBoard.getTile(i, position.second);
-                this->chessBoard.printTile(i, position.second);
                 short val = this->valRook(i, position.second, tile);
                 nextMoves.push_back(make_pair(make_pair(i, position.second), val));
             }
@@ -243,15 +255,12 @@ public:
     }
 
     vector<pair<pair < short, short>, short>> nextKnight() {
-        cout << endl << "NextKnight" << endl;
         vector < pair < pair < short, short >, short >> nextMoves;
-        this->chessBoard.printKnightPosition();
-        pair<short, short> position = this->chessBoard.getKnightPosition();
+        pair<short, short> position = this->chessBoard.knightPosition;
         for (short i = 0; i < 8; ++i) {
             short x = position.first - this->knightMoves[i].first;
             short y = position.second - this->knightMoves[i].second;
             if (this->chessBoard.canMoveKnightTo(x, y)) {
-                this->chessBoard.printTile(x, y);
                 short tile = this->chessBoard.getTile(x, y);
                 short val = this->valKnight(tile);
                 nextMoves.push_back(make_pair(make_pair(x, y), val));
@@ -262,35 +271,64 @@ public:
     }
 
     vector<pair<pair < short, short>, short>> next() {
-        if (this->chessBoard.turn == TileStatus::Rook) {
+        if (this->turn == TileStatus::Rook) {
             return this->nextRook();
         }
         return this->nextKnight();
     }
 
-    void initGame(short k, string &boardStr) {
-        cout << "Init game" << endl;
-        this->chessBoard = ChessBoard(k, boardStr);
+    void initGame(short &k, short &upperBound, string &boardStr) {
+        this->turn = TileStatus::Rook;
+        this->chessBoard = ChessBoard(k, upperBound, boardStr);
     }
 
-    bool isFinal() {
-//        TODO
+    bool terminate(int &cost) {
+        // TODO
+        if (this->chessBoard.pawnsCnt == 0 || cost >= this->chessBoard.upperBound) {
+            if (cost < 9) {
+                cout << cost << endl;
+            }
+            return true;
+        }
         return false;
+    }
+
+    void move(pair < pair < short, short >, short > &dest) {
+        if (this->turn == TileStatus::Rook) {
+            this->chessBoard.move(this->chessBoard.rookPosition, dest.first);
+            this->chessBoard.rookPosition = dest.first;
+            this->turn = TileStatus::Knight;
+        } else {
+            this->chessBoard.move(this->chessBoard.knightPosition, dest.first);
+            this->chessBoard.knightPosition = dest.first;
+            this->turn = TileStatus::Rook;
+        }
     }
 };
 
-void solve(Game game) {
+void solve(Game game, pair < pair < short, short >, short > dest, int cost) {
+//    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    if (dest.second != -1) {
+        game.move(dest);
+//        game.chessBoard.print();
+//        cout << "Cost: " << cost << endl;
+    }
+    if (game.terminate(cost)) {
+//        cout << "Terminate" << endl;
+//        if (cost == game.chessBoard.lowerBound) {
+//            cout << "Cost: " << cost << endl;
+//        }
+        return;
+    }
     vector < pair < pair < short, short >, short >> moves = game.next();
-    cout << endl;
-    for (unsigned short i = 0; i < moves.size(); ++i) {
-        game.chessBoard.printTile(moves[i].first.first, moves[i].first.second);
-        cout << "Val: " << moves[i].second << endl;
+    for (unsigned short i = 0; i < moves.size(); i++) {
+        solve(game, moves[i], cost + 1);
     }
 }
 
 int main(int argc, char *argv[]) {
-    short k, maxDepth;
-    cin >> k >> maxDepth;
+    short k, upperbound;
+    cin >> k >> upperbound;
 
     string tmp;
     string boardStr;
@@ -300,6 +338,6 @@ int main(int argc, char *argv[]) {
     }
 
     Game game = Game();
-    game.initGame(k, boardStr);
-    solve(game);
+    game.initGame(k, upperbound, boardStr);
+    solve(game, make_pair(make_pair(-1, -1), -1), 0);
 }
