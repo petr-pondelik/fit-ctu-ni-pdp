@@ -12,7 +12,7 @@ enum TileStatus {
 };
 
 bool compareMoves(const pair<pair<int, int>, int> &a, const pair<pair<int, int>, int> &b) {
-    return a.second < b.second;
+    return a.second > b.second;
 }
 
 class ChessBoard {
@@ -260,13 +260,46 @@ private:
         return 0;
     }
 
+    vector<pair<pair < int, int>, int>> nextKnight() {
+        //        TODO
+        cout << endl << "NextKnight" << endl;
+        vector < pair < pair < int, int >, int >> nextMoves;
+
+        this->chessBoard->printKnightPosition();
+
+        pair<int, int> position = this->chessBoard->getKnightPosition();
+
+        for (int i = 0; i < 8; ++i) {
+            int x = position.first - this->knightMoves[i].first;
+            int y = position.second - this->knightMoves[i].second;
+            if (this->chessBoard->canMoveKnightTo(x, y)) {
+                this->chessBoard->printTile(x, y);
+                int tile = this->chessBoard->getTile(x, y);
+                int val = this->valKnight(tile);
+//            cout << "Val: " << val << endl;
+                nextMoves.push_back(make_pair(make_pair(x, y), val));
+            }
+        }
+
+        sort(nextMoves.begin(), nextMoves.end(), compareMoves);
+
+        cout << endl;
+
+        for (unsigned int i = 0; i < nextMoves.size(); ++i) {
+            this->chessBoard->printTile(nextMoves[i].first.first, nextMoves[i].first.second);
+            cout << "Val: " << nextMoves[i].second << endl;
+        }
+
+        return nextMoves;
+    }
+
     vector<pair<pair < int, int>, int>> next() {
-//        if (this->turn == TileStatus::Rook) {
-//            return this->nextRook();
-//        }
-//        return this->nextKnight();
-        this->nextRook();
+        if (this->turn == TileStatus::Rook) {
+            return this->nextRook();
+        }
         return this->nextKnight();
+//        this->nextRook();
+//        return this->nextKnight();
     }
 
 public:
@@ -285,49 +318,11 @@ public:
         return false;
     }
 
-    void move() {
-        vector<pair<pair < int, int>, int>> next = this->next();
-    }
-
     void solve() {
-        this->move();
+        vector<pair<pair<int, int>, int>> moves = this->next();
+
     };
-
-    vector<pair<pair < int, int>, int>> nextKnight();
 };
-
-vector<pair<pair < int, int>, int>> Game::nextKnight() {
-//        TODO
-    cout << endl << "NextKnight" << endl;
-    vector<pair<pair < int, int>, int>> nextMoves;
-
-    this->chessBoard->printKnightPosition();
-
-    pair<int, int> position = this->chessBoard->getKnightPosition();
-
-    for (int i = 0; i < 8; ++i) {
-        int x = position.first - this->knightMoves[i].first;
-        int y = position.second - this->knightMoves[i].second;
-        if (this->chessBoard->canMoveKnightTo(x, y)) {
-            this->chessBoard->printTile(x, y);
-            int tile = this->chessBoard->getTile(x, y);
-            int val = this->valKnight(tile);
-//            cout << "Val: " << val << endl;
-            nextMoves.push_back(make_pair(make_pair(x, y), val));
-        }
-    }
-
-    sort(nextMoves.begin(), nextMoves.end(), compareMoves);
-
-    cout << endl;
-
-    for (unsigned int i = 0; i < nextMoves.size(); ++i) {
-        this->chessBoard->printTile(nextMoves[i].first.first, nextMoves[i].first.second);
-        cout << "Val: " << nextMoves[i].second << endl;
-    }
-
-    return nextMoves;
-}
 
 int main(int argc, char *argv[]) {
     int k, maxDepth;
