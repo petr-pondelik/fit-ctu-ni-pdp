@@ -2,4 +2,6 @@
 
 ## Sekvenční algoritmus
 
-TODO
+### Měření
+
+    { time ./output/output.out < data/vaj1.txt ; } >> res.txt 2>> res.txt

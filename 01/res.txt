@@ -1,0 +1,28 @@
+=======================
+Best solution: 4
+Iterations: 89
+
+real	0m0,006s
+user	0m0,005s
+sys	0m0,001s
+=======================
+Best solution: 7
+Iterations: 2572
+
+real	0m0,002s
+user	0m0,002s
+sys	0m0,000s
+=======================
+Best solution: 18
+Iterations: 189112810
+
+real	0m11,270s
+user	0m11,265s
+sys	0m0,004s
+=======================
+Best solution: 7
+Iterations: 624
+
+real	0m0,010s
+user	0m0,005s
+sys	0m0,000s
