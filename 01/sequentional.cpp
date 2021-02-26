@@ -87,7 +87,7 @@ public:
         return this->k;
     }
 
-    bool fitsDimensions(short x, short y) {
+    bool fitsDimensions(short &x, short &y) {
         return x >= 0 && x < this->k && y >= 0 && y < this->k;
     }
 
@@ -136,7 +136,7 @@ public:
         return (this->getTile(x, y) == TileStatus::Empty) || (this->getTile(x, y) == TileStatus::Pawn);
     }
 
-    bool canMoveKnightTo(short x, short y) {
+    bool canMoveKnightTo(short &x, short &y) {
         if (!this->fitsDimensions(x, y)) {
             return false;
         }
@@ -147,18 +147,18 @@ public:
         return this->k * this->k;
     }
 
-    short mapPosition(short x, short y) {
+    short mapPosition(short &x, short &y) {
         return x * this->k + y;
     }
 
-    short getTile(short x, short y, bool print = false) {
+    short getTile(short &x, short &y, bool print = false) {
 //        if (print) {
 //            cout << "[" + to_string(x) + "," + to_string(y) + "]" << endl;
 //        }
         return this->board[this->mapPosition(x, y)];
     }
 
-    void move(pair<short, short> from, pair<short, short> to) {
+    void move(pair<short, short> &from, pair<short, short> &to) {
         short stone = this->getTile(from.first, from.second);
         this->board[this->mapPosition(from.first, from.second)] = TileStatus::Empty;
         if (this->getTile(to.first, to.second) == TileStatus::Pawn) {
@@ -168,7 +168,7 @@ public:
         this->board[this->mapPosition(to.first, to.second)] = stone;
     }
 
-    void printTile(short x, short y) {
+    void printTile(short &x, short &y) {
         cout << "[" << x << "," << y << "]: " << this->getTile(x, y) << endl;
     }
 
@@ -298,7 +298,7 @@ public:
         if ((cost + this->chessBoard.pawnsCnt) >= bestSol) {
             return true;
         }
-        if ((cost + this->chessBoard.pawnsCnt) > this->chessBoard.upperBound) {
+        if ((cost + this->chessBoard.pawnsCnt) >= this->chessBoard.upperBound) {
             return true;
         }
         return false;
@@ -318,7 +318,7 @@ public:
 };
 
 void solve(Game game, pair < pair < short, short >, short > dest, unsigned int cost) {
-//    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+//    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
     if (dest.second != -1) {
         game.move(dest);
 //        cout << "Cost: " << cost << endl;
@@ -357,7 +357,7 @@ int main(int argc, char *argv[]) {
 
     Game game = Game();
     game.initGame(k, upperbound, boardStr);
-//    game.chessBoard.print();
+    game.chessBoard.print();
     solve(game, make_pair(make_pair(-1, -1), -1), 0);
     cout << "=======================" << endl;
     cout << "Best solution: " << bestSol << endl;

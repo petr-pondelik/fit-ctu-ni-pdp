@@ -26,3 +26,10 @@ Iterations: 624
 real	0m0,010s
 user	0m0,005s
 sys	0m0,000s
+=======================
+Best solution: 20
+Iterations: 4946652628
+
+real	5m13,351s
+user	5m13,010s
+sys	0m0,084s
