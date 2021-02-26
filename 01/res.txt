@@ -1,35 +1,95 @@
-=======================
+1 =======================
+
 Best solution: 4
 Iterations: 89
 
-real	0m0,006s
-user	0m0,005s
-sys	0m0,001s
-=======================
+real    0m0,007s
+user    0m0,007s
+sys     0m0,000s
+
+2 =======================
+
 Best solution: 7
-Iterations: 2572
+Iterations: 1529
 
-real	0m0,002s
-user	0m0,002s
-sys	0m0,000s
-=======================
+real    0m0,007s
+user    0m0,001s
+sys     0m0,006s
+
+3 =======================
+
 Best solution: 18
-Iterations: 189112810
+Iterations: 174792031
 
-real	0m11,270s
-user	0m11,265s
-sys	0m0,004s
-=======================
+real    0m10,833s
+user    0m10,820s
+sys     0m0,008s
+
+4 =======================
+
 Best solution: 7
 Iterations: 624
 
-real	0m0,010s
-user	0m0,005s
-sys	0m0,000s
-=======================
-Best solution: 20
-Iterations: 4946652628
+real    0m0,006s
+user    0m0,000s
+sys     0m0,006s
 
-real	5m13,351s
-user	5m13,010s
-sys	0m0,084s
+5 =======================
+
+Best solution: 20
+Iterations: 4923572564
+
+real    4m53,739s
+user    4m53,360s
+sys     0m0,080s
+
+6 =======================
+
+Best solution: 21
+Iterations: 25000758991
+
+real    25m23,369s
+user    25m22,568s
+sys     0m0,192s
+
+7 =======================
+
+Best solution: 21
+Iterations: 21143645464
+
+real    39m3,975s
+user    38m58,799s
+sys     0m0,492s
+
+9 =======================
+Best solution: 16
+Iterations: 98678856827
+
+real    126m22,267s
+user    126m17,602s
+sys     0m1,372s
+
+10 =======================
+Best solution: 16
+Iterations: 11913393560
+
+real    25m31,501s
+user    25m28,481s
+sys     0m0,484s
+
+11 =======================
+Best solution: 22
+Iterations: 1573589727
+
+real    4m31,606s
+user    4m29,954s
+sys     0m0,216s
+
+12 =======================
+
+Best solution: 23
+Iterations: 16992035682
+
+real    36m43,283s
+user    36m39,954s
+sys     0m0,480s

@@ -9,8 +9,9 @@
 
 using namespace std;
 
-unsigned int bestSol = numeric_limits<unsigned int>::max();
-unsigned long long iteration = 0;
+unsigned int OPT_COST = numeric_limits<unsigned int>::max();
+vector<short> OPT_CONFIGURATION;
+unsigned long long ITERATION = 0;
 
 enum TileStatus {
     Rook, Knight, Pawn, Empty
@@ -21,8 +22,6 @@ bool compareMoves(const pair<pair<short, short>, short> &a, const pair<pair<shor
 }
 
 class ChessBoard {
-
-private:
 
 public:
     // Array of size k^2 mapped to 2D array
@@ -83,10 +82,6 @@ public:
         }
     }
 
-    short getDimension() {
-        return this->k;
-    }
-
     bool fitsDimensions(short &x, short &y) {
         return x >= 0 && x < this->k && y >= 0 && y < this->k;
     }
@@ -96,16 +91,12 @@ public:
     }
 
     bool canMoveRookTo(short x, short y) {
-//        cout << "canMoveRookTo: [" << x << "," << y << "]" << endl;
         if (!this->fitsDimensions(x, y)) {
             return false;
         }
 
         short xDiff = x - this->rookPosition.first;
         short yDiff = y - this->rookPosition.second;
-
-//        cout << "xDiff: " << xDiff << endl;
-//        cout << "yDiff: " << yDiff << endl;
 
         if (xDiff > 0) {
             for (short i = 1; i < xDiff; ++i) {
@@ -151,10 +142,7 @@ public:
         return x * this->k + y;
     }
 
-    short getTile(short &x, short &y, bool print = false) {
-//        if (print) {
-//            cout << "[" + to_string(x) + "," + to_string(y) + "]" << endl;
-//        }
+    short getTile(short &x, short &y) {
         return this->board[this->mapPosition(x, y)];
     }
 
@@ -162,7 +150,6 @@ public:
         short stone = this->getTile(from.first, from.second);
         this->board[this->mapPosition(from.first, from.second)] = TileStatus::Empty;
         if (this->getTile(to.first, to.second) == TileStatus::Pawn) {
-//            cout << endl << endl << "PAWN KILLED" << endl << endl;
             this->pawnsCnt--;
         }
         this->board[this->mapPosition(to.first, to.second)] = stone;
@@ -214,7 +201,7 @@ public:
     };
 
     bool isPawnOnAxes(short x, short y) {
-        for (short i = 0; i < this->chessBoard.getDimension(); ++i) {
+        for (short i = 0; i < this->chessBoard.k; ++i) {
             if (this->chessBoard.getTile(x, i) == TileStatus::Pawn) {
                 return true;
             }
@@ -238,12 +225,14 @@ public:
     vector<pair<pair < short, short>, short>> nextRook() {
         vector < pair < pair < short, short >, short >> nextMoves;
         pair<short, short> position = this->chessBoard.rookPosition;
-        for (short i = 0; i < this->chessBoard.getDimension(); ++i) {
+        for (short i = 0; i < this->chessBoard.k; ++i) {
             if (this->chessBoard.canMoveRookTo(position.first, i)) {
                 short tile = this->chessBoard.getTile(position.first, i);
                 short val = this->valRook(position.first, i, tile);
                 nextMoves.push_back(make_pair(make_pair(position.first, i), val));
             }
+        }
+        for (short i = 0; i < this->chessBoard.k; i++) {
             if (this->chessBoard.canMoveRookTo(i, position.second)) {
                 short tile = this->chessBoard.getTile(i, position.second);
                 short val = this->valRook(i, position.second, tile);
@@ -251,11 +240,6 @@ public:
             }
         }
         sort(nextMoves.begin(), nextMoves.end(), compareMoves);
-//        cout << endl << "Next rook:" << endl;
-//        for (unsigned int i = 0; i < nextMoves.size(); ++i) {
-//            cout << "[" << nextMoves[i].first.first << "," << nextMoves[i].first.second << "]: " << nextMoves[i].second << endl;
-//        }
-//        cout << endl;
         return nextMoves;
     }
 
@@ -295,16 +279,16 @@ public:
     }
 
     bool terminate(unsigned int &cost) {
-        if ((cost + this->chessBoard.pawnsCnt) >= bestSol) {
+        if ((cost + this->chessBoard.pawnsCnt) >= OPT_COST) {
             return true;
         }
-        if ((cost + this->chessBoard.pawnsCnt) >= this->chessBoard.upperBound) {
+        if ((cost + this->chessBoard.pawnsCnt) > this->chessBoard.upperBound) {
             return true;
         }
         return false;
     }
 
-    void move(pair < pair < short, short >, short > &dest) {
+    void move(pair<pair<short, short>, short> &dest) {
         if (this->turn == TileStatus::Rook) {
             this->chessBoard.move(this->chessBoard.rookPosition, dest.first);
             this->chessBoard.rookPosition = dest.first;
@@ -317,30 +301,33 @@ public:
     }
 };
 
-void solve(Game game, pair < pair < short, short >, short > dest, unsigned int cost) {
-//    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+void solve(Game game, pair<pair<short, short>, short> dest, unsigned int cost, vector<short> conf) {
+//    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     if (dest.second != -1) {
         game.move(dest);
 //        cout << "Cost: " << cost << endl;
 //        game.chessBoard.print();
+        conf.emplace_back((dest.first.first * 1000) + dest.first.second);
     }
-    if (game.chessBoard.pawnsCnt == 0 && cost < bestSol) {
-        bestSol = cost;
+    if (game.chessBoard.pawnsCnt == 0 && cost < OPT_COST) {
+        OPT_COST = cost;
+        OPT_CONFIGURATION = conf;
     }
-    iteration++;
-//    if (iteration > 2000000000) {
-//        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-//        cout << "Iteration: " << iteration << endl;
-//        cout << "Best: " << bestSol << endl;
-//        game.chessBoard.print();
-//        cout << "Cost: " << cost << endl;
-//    }
+    ITERATION++;
+    if (ITERATION == 1000000000 || ITERATION == 5000000000 || ITERATION == 10000000000 || ITERATION == 30000000000 ||
+            ITERATION == 100000000000 || ITERATION == 200000000000) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        cout << "Iteration: " << ITERATION << endl;
+        cout << "Best: " << OPT_COST << endl;
+        game.chessBoard.print();
+        cout << "Cost: " << cost << endl;
+    }
     if (game.terminate(cost)) {
         return;
     }
     vector < pair < pair < short, short >, short >> moves = game.next();
     for (unsigned short i = 0; i < moves.size(); i++) {
-        solve(game, moves[i], cost + 1);
+        solve(game, moves[i], cost + 1, conf);
     }
 }
 
@@ -348,8 +335,7 @@ int main(int argc, char *argv[]) {
     unsigned short k, upperbound;
     cin >> k >> upperbound;
 
-    string tmp;
-    string boardStr;
+    string tmp, boardStr;
     for (short i = 0; i < k; ++i) {
         cin >> tmp;
         boardStr += tmp;
@@ -358,8 +344,26 @@ int main(int argc, char *argv[]) {
     Game game = Game();
     game.initGame(k, upperbound, boardStr);
     game.chessBoard.print();
-    solve(game, make_pair(make_pair(-1, -1), -1), 0);
+
+    solve(game, make_pair(make_pair(-1, -1), -1), 0, OPT_CONFIGURATION);
+
     cout << "=======================" << endl;
-    cout << "Best solution: " << bestSol << endl;
-    cout << "Iterations: " << iteration << endl;
+    cout << "Best cost: " << OPT_COST << endl;
+    cout << "Iterations: " << ITERATION << endl;
+    cout << "Best configuration: " << endl;
+
+    short x, y;
+
+    for (unsigned int i = 0; i < OPT_CONFIGURATION.size(); ++i) {
+        cout << (i % 2 ? "J" : "V");
+        x = (OPT_CONFIGURATION[i] / 1000);
+        y = OPT_CONFIGURATION[i] % 1000;
+        cout << "[" << x << "," << y << "]";
+        if (game.chessBoard.getTile(x, y) == TileStatus::Pawn) {
+            cout << "*";
+        }
+        cout << " ";
+    }
+
+    cout << endl;
 }
