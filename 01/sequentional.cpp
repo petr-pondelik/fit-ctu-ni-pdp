@@ -13,9 +13,6 @@ unsigned int OPT_COST = numeric_limits<unsigned int>::max();
 vector<short> OPT_CONFIGURATION;
 unsigned long long ITERATION = 0;
 
-enum TileStatus {
-    Rook, Knight, Pawn, Empty
-};
 
 bool compareMoves(const pair<pair<short, short>, short> &a, const pair<pair<short, short>, short> &b) {
     return a.second > b.second;
@@ -25,7 +22,7 @@ class ChessBoard {
 
 public:
     // Array of size k^2 mapped to 2D array
-    vector<short> board;
+    vector<char> board;
     pair<short, short> rookPosition;
     pair<short, short> knightPosition;
     unsigned short k, pawnsCnt, lowerBound, upperBound;
@@ -37,57 +34,27 @@ public:
         this->pawnsCnt = 0;
         for (short i = 0; i < k; i++) {
             for (short j = 0; j < k; j++) {
-                short tileStatus = this->mapToTileStatus(boardStr[this->mapPosition(i, j)]);
-                if (tileStatus == TileStatus::Rook) {
+                short content = boardStr[this->mapPosition(i, j)];
+                if (content == 'V') {
                     this->rookPosition = make_pair(i, j);
-                } else if (tileStatus == TileStatus::Knight) {
+                } else if (content == 'J') {
                     this->knightPosition = make_pair(i, j);
-                } else if (tileStatus == TileStatus::Pawn) {
+                } else if (content == 'P') {
                     this->pawnsCnt++;
                 }
-                this->board.emplace_back(tileStatus);
+                this->board.emplace_back(content);
             }
         }
         this->lowerBound = this->pawnsCnt;
         this->upperBound = upperBound;
     };
 
-    short mapToTileStatus(char input) {
-        switch (input) {
-            case '-':
-                return 3;
-            case 'P':
-                return 2;
-            case 'J':
-                return 1;
-            case 'V':
-                return 0;
-            default:
-                return '-';
-        }
-    }
-
-    char tileStatusToStr(short status) {
-        switch (status) {
-            case 3:
-                return '-';
-            case 2:
-                return 'P';
-            case 1:
-                return 'J';
-            case 0:
-                return 'V';
-            default:
-                return '-';
-        }
-    }
-
     bool fitsDimensions(short &x, short &y) {
         return x >= 0 && x < this->k && y >= 0 && y < this->k;
     }
 
     bool isTileEmpty(short x, short y) {
-        return this->getTile(x, y) == TileStatus::Empty;
+        return this->getTile(x, y) == '-';
     }
 
     bool canMoveRookTo(short x, short y) {
@@ -124,14 +91,14 @@ public:
             }
         }
 
-        return (this->getTile(x, y) == TileStatus::Empty) || (this->getTile(x, y) == TileStatus::Pawn);
+        return (this->getTile(x, y) == '-') || (this->getTile(x, y) == 'P');
     }
 
     bool canMoveKnightTo(short &x, short &y) {
         if (!this->fitsDimensions(x, y)) {
             return false;
         }
-        return (this->getTile(x, y) == TileStatus::Empty) || (this->getTile(x, y) == TileStatus::Pawn);
+        return (this->getTile(x, y) == '-') || (this->getTile(x, y) == 'P');
     }
 
     short getSize() {
@@ -148,8 +115,8 @@ public:
 
     void move(pair<short, short> &from, pair<short, short> &to) {
         short stone = this->getTile(from.first, from.second);
-        this->board[this->mapPosition(from.first, from.second)] = TileStatus::Empty;
-        if (this->getTile(to.first, to.second) == TileStatus::Pawn) {
+        this->board[this->mapPosition(from.first, from.second)] = '-';
+        if (this->getTile(to.first, to.second) == 'P') {
             this->pawnsCnt--;
         }
         this->board[this->mapPosition(to.first, to.second)] = stone;
@@ -176,7 +143,7 @@ public:
         cout << "Upper bound: " << this->upperBound << endl;
         for (short i = 0; i < k; ++i) {
             for (short j = 0; j < k; ++j) {
-                cout << this->tileStatusToStr(this->board[this->mapPosition(i, j)]);
+                cout << this->board[this->mapPosition(i, j)];
             }
             cout << endl;
         }
@@ -202,10 +169,10 @@ public:
 
     bool isPawnOnAxes(short x, short y) {
         for (short i = 0; i < this->chessBoard.k; ++i) {
-            if (this->chessBoard.getTile(x, i) == TileStatus::Pawn) {
+            if (this->chessBoard.getTile(x, i) == 'P') {
                 return true;
             }
-            if (this->chessBoard.getTile(i, y) == TileStatus::Pawn) {
+            if (this->chessBoard.getTile(i, y) == 'P') {
                 return true;
             }
         }
@@ -213,7 +180,7 @@ public:
     }
 
     short valRook(short x, short y, short tile) {
-        if (tile == TileStatus::Pawn) {
+        if (tile == 'P') {
             return 2;
         }
         if (this->isPawnOnAxes(x, y)) {
@@ -244,7 +211,7 @@ public:
     }
 
     short valKnight(short tile) {
-        if (tile == TileStatus::Pawn) {
+        if (tile == 'P') {
             return 2;
         }
         return 0;
@@ -267,14 +234,14 @@ public:
     }
 
     vector<pair<pair < short, short>, short>> next() {
-        if (this->turn == TileStatus::Rook) {
+        if (this->turn == 'V') {
             return this->nextRook();
         }
         return this->nextKnight();
     }
 
     void initGame(unsigned short &k, unsigned short &upperBound, string &boardStr) {
-        this->turn = TileStatus::Rook;
+        this->turn = 'V';
         this->chessBoard = ChessBoard(k, upperBound, boardStr);
     }
 
@@ -289,14 +256,14 @@ public:
     }
 
     void move(pair<pair<short, short>, short> &dest) {
-        if (this->turn == TileStatus::Rook) {
+        if (this->turn == 'V') {
             this->chessBoard.move(this->chessBoard.rookPosition, dest.first);
             this->chessBoard.rookPosition = dest.first;
-            this->turn = TileStatus::Knight;
+            this->turn = 'J';
         } else {
             this->chessBoard.move(this->chessBoard.knightPosition, dest.first);
             this->chessBoard.knightPosition = dest.first;
-            this->turn = TileStatus::Rook;
+            this->turn = 'V';
         }
     }
 };
@@ -353,16 +320,25 @@ int main(int argc, char *argv[]) {
     cout << "Best configuration: " << endl;
 
     short x, y;
+    vector<pair<short, short>> taken;
+    pair<short, short> coordinates;
 
     for (unsigned int i = 0; i < OPT_CONFIGURATION.size(); ++i) {
         cout << (i % 2 ? "J" : "V");
         x = (OPT_CONFIGURATION[i] / 1000);
         y = OPT_CONFIGURATION[i] % 1000;
         cout << "[" << x << "," << y << "]";
-        if (game.chessBoard.getTile(x, y) == TileStatus::Pawn) {
-            cout << "*";
+
+        coordinates = make_pair(x, y);
+
+        if (find(taken.begin(), taken.end(), coordinates) == taken.end()) {
+            if (game.chessBoard.getTile(x, y) == 'P') {
+                cout << "*";
+            }
         }
+
         cout << " ";
+        taken.emplace_back(make_pair(x, y));
     }
 
     cout << endl;
