@@ -1,7 +1,21 @@
-# NI-PDP Semestral project
+# NI-PDP: Semestrální projekt (VAJ)
 
 ## Sekvenční algoritmus
 
+### Dostupné příkazy
+
+#### Kompilace
+
+    make
+    
+#### Vyčištění výstupního adresáře
+
+    make clean
+
+#### Spuštění programu
+
+    ./output/a.out < data/vaj1.txt    
+
 ### Měření
 
-    { time ./output/output.out < data/vaj1.txt ; } >> res.txt 2>> res.txt
+    { time ./output/a.out < data/vaj1.txt ; } >> ./results/measurement.txt 2>> ./results/measurement.txt
