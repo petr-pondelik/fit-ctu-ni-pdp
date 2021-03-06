@@ -4,6 +4,7 @@
 #include <string>
 #include <bits/stdc++.h>
 #include <limits>
+#include <omp.h>
 #include <chrono>
 
 using namespace std;
@@ -309,6 +310,7 @@ void solve(Game game, pair<pair<short, short>, short> dest, unsigned int cost, v
     /** Získej vektor dalších tahů seřazených dle ceny a rekurentně se zanoř */
     vector < pair < pair < short, short >, short >> moves = game.next();
     for (unsigned short i = 0; i < moves.size(); i++) {
+        # pragma omp task
         solve(game, moves[i], cost + 1, conf);
     }
 }
@@ -331,8 +333,12 @@ int main(int argc, char *argv[]) {
 
     chrono::steady_clock::time_point _start(chrono::steady_clock::now());
 
-    /** Rekurentní nalezení nejlepší posloupnosti tahů */
-    solve(game, make_pair(make_pair(-1, -1), -1), 0, OPT_CONFIGURATION);
+    # pragma omp parallel
+    {
+        /** Rekurentní nalezení nejlepší posloupnosti tahů */
+        # pragma omp single
+        solve(game, make_pair(make_pair(-1, -1), -1), 0, OPT_CONFIGURATION);
+    }
 
     chrono::steady_clock::time_point _end(chrono::steady_clock::now());
 
