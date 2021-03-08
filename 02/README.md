@@ -12,8 +12,8 @@
 
 ### Spuštění programu
 
-    ./output/a.out < data/vaj1.txt    
+    ./output/a.out {threads_cnt} < data/vaj{id}.txt    
 
 ## Měření
 
-    { time ./output/a.out < data/vaj1.txt ; } >> ./results/measurement.txt 2>> ./results/measurement.txt
+    ./output/a.out {threads_cnt} < data/vaj{id}.txt >> ./results/measurement.txt

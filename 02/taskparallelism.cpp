@@ -11,8 +11,8 @@ using namespace std;
 
 /** Globální proměnné */
 unsigned int OPT_COST = numeric_limits<unsigned int>::max();
+unsigned short THREAD_CNT;
 vector<short> OPT_CONFIGURATION;
-unsigned long long ITERATION = 0;
 
 /** Komparační funkce pro setřídění pohybů dle jejich ceny */
 bool compareMoves(const pair<pair<short, short>, short> &a, const pair<pair<short, short>, short> &b) {
@@ -289,20 +289,27 @@ public:
     }
 };
 
-void solve(Game game, pair<pair<short, short>, short> dest, unsigned int cost, vector<short> conf) {
+void solve(Game game, pair<pair<short, short>, short> dest, unsigned short cost, vector<short> conf) {
     /** Pokud se nejezdná o počáteční krok, proveď tah */
     if (dest.second != -1) {
         game.move(dest);
 //        cout << "Cost: " << cost << endl;
+//        cout << "Remaining depth: " << game.chessBoard.upperBound - cost << endl;
 //        game.chessBoard.print();
         conf.emplace_back((dest.first.first * 1000) + dest.first.second);
     }
-    /** V případě nalezení lepšího řešení, aktualizuj stávající nejlepší */
+
     if (game.chessBoard.pawnsCnt == 0 && cost < OPT_COST) {
-        OPT_COST = cost;
-        OPT_CONFIGURATION = conf;
+        # pragma omp critical
+        {
+        /** V případě nalezení lepšího řešení, aktualizuj stávající nejlepší */
+            if (game.chessBoard.pawnsCnt == 0 && cost < OPT_COST) {
+                OPT_COST = cost;
+                OPT_CONFIGURATION = conf;
+            }
+        }
     }
-    ITERATION++;
+
     /** Pokud řešení nemůže být lepší než stávající nejlepší, nebo než lepší či rovno horní mezi, ukončí větev */
     if ( ((cost + game.chessBoard.pawnsCnt) >= OPT_COST) || ((cost + game.chessBoard.pawnsCnt) > game.chessBoard.upperBound) ) {
         return;
@@ -310,14 +317,20 @@ void solve(Game game, pair<pair<short, short>, short> dest, unsigned int cost, v
     /** Získej vektor dalších tahů seřazených dle ceny a rekurentně se zanoř */
     vector < pair < pair < short, short >, short >> moves = game.next();
     for (unsigned short i = 0; i < moves.size(); i++) {
-        # pragma omp task
-        solve(game, moves[i], cost + 1, conf);
+        if ( (cost < (OPT_COST - 2)) || (cost < (game.chessBoard.upperBound - 1)) ) {
+//            # pragma omp task if ( (cost < (OPT_COST - 2)) || (cost < (game.chessBoard.upperBound - 2)) )
+            # pragma omp task
+            solve(game, moves[i], cost + 1, conf);
+        } else {
+            solve(game, moves[i], cost + 1, conf);
+        }
     }
 }
 
 int main(int argc, char *argv[]) {
     unsigned short k, upperbound;
     cin >> k >> upperbound;
+    THREAD_CNT = atoi(argv[1]);
 
     /** Načtení řetězce čachovnice */
     string tmp, boardStr;
@@ -333,7 +346,7 @@ int main(int argc, char *argv[]) {
 
     chrono::steady_clock::time_point _start(chrono::steady_clock::now());
 
-    # pragma omp parallel
+    # pragma omp parallel firstprivate(game) num_threads(THREAD_CNT)
     {
         /** Rekurentní nalezení nejlepší posloupnosti tahů */
         # pragma omp single
@@ -345,6 +358,11 @@ int main(int argc, char *argv[]) {
     short x, y;
     vector<pair<short, short>> taken;
     pair<short, short> coordinates;
+
+    cout << "=======================" << endl;
+
+    cout << "Best cost: " << OPT_COST << endl;
+    cout << "Time: " << chrono::duration_cast<chrono::duration<double>>(_end - _start).count() << "s" << endl;
 
     /** Výpis nejlepší nalezené konfigurace */
     for (unsigned int i = 0; i < OPT_CONFIGURATION.size(); ++i) {
@@ -364,9 +382,4 @@ int main(int argc, char *argv[]) {
         taken.emplace_back(make_pair(x, y));
     }
     cout << endl;
-
-    cout << "=======================" << endl;
-    cout << "Best cost: " << OPT_COST << endl;
-    cout << "Iterations: " << ITERATION << endl;
-    cout << "Time: " << chrono::duration_cast<chrono::duration<double>>(_end - _start).count() << endl;
 }
