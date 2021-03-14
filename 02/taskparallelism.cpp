@@ -318,7 +318,6 @@ void solve(Game game, pair<pair<short, short>, short> dest, unsigned short cost,
     vector < pair < pair < short, short >, short >> moves = game.next();
     for (unsigned short i = 0; i < moves.size(); i++) {
         if ( (cost < (OPT_COST - 2)) || (cost < (game.chessBoard.upperBound - 1)) ) {
-//            # pragma omp task if ( (cost < (OPT_COST - 2)) || (cost < (game.chessBoard.upperBound - 2)) )
             # pragma omp task
             solve(game, moves[i], cost + 1, conf);
         } else {

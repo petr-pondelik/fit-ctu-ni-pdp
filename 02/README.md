@@ -1,4 +1,4 @@
-# Sekvenční algoritmus (VAJ)
+# OpenMP - task paralelismus (VAJ)
 
 ## Dostupné příkazy
 
