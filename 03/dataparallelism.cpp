@@ -14,16 +14,6 @@ unsigned int OPT_COST = numeric_limits<unsigned int>::max();
 unsigned short THREAD_CNT;
 vector<short> OPT_CONFIGURATION;
 
-/** Komparační funkce pro setřídění pohybů dle jejich ceny */
-bool compareMoves(const pair<pair<short, short>, short> &a, const pair<pair<short, short>, short> &b) {
-    return a.second > b.second;
-}
-
-/** Komparační funkce pro setřídění stavů dle jejich perspektivy */
-//bool compareStates(const State &a, const State &b) {
-//    return a.
-//}
-
 /** Reprezentace šachovnice */
 class ChessBoard {
 
@@ -178,6 +168,11 @@ public:
     }
 };
 
+/** Komparační funkce pro setřídění pohybů dle jejich ceny */
+bool compareMoves(const pair<pair<short, short>, short> &a, const pair<pair<short, short>, short> &b) {
+    return a.second > b.second;
+}
+
 /** Reprezentace problému */
 class Game {
 
@@ -324,6 +319,11 @@ public:
 
 };
 
+/** Komparační funkce pro setřídění stavů dle jejich perspektivy */
+bool compareStates(const State &a, const State &b) {
+    return a.game.chessBoard.pawnsCnt < b.game.chessBoard.pawnsCnt;
+}
+
 void getPrimalStates(State state, vector <State> &states) {
     /** Pokud se nejezdná o počáteční krok, proveď tah */
     if (state.nextMove.second != -1) {
@@ -417,10 +417,13 @@ int main(int argc, char *argv[]) {
 
     getPrimalStates(initialState, primalStates);
 
+    sort(primalStates.begin(), primalStates.end(), compareStates);
+
 //    for (unsigned int i = 0; i < primalStates.size(); ++i) {
 //        cout << primalStates[i].depth << endl;
 //        cout << "[" << primalStates[i].nextMove.first.first << "," << primalStates[i].nextMove.first.second <<  "]" << endl;
 //        primalStates[i].game.chessBoard.print();
+//        cout << primalStates[i].game.chessBoard.pawnsCnt << endl;
 //    }
 
     #pragma omp parallel for schedule(dynamic, 1) num_threads(THREAD_CNT)
