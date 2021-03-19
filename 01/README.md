@@ -12,8 +12,8 @@
 
 ### Spuštění programu
 
-    ./output/a.out < data/vaj1.txt    
+    ./output/a.out < ./../data/vaj1.txt    
 
 ## Měření
 
-    { time ./output/a.out < data/vaj1.txt ; } >> ./results/measurement.txt 2>> ./results/measurement.txt
+    { time ./output/a.out < ./../data/vaj1.txt ; } >> ./results/measurement.txt 2>> ./results/measurement.txt

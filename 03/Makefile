@@ -11,7 +11,7 @@ run: compile
 
 compile: $(BINARY)
 
-$(BINARY): taskparallelism.cpp
+$(BINARY): dataparallelism.cpp
 	$(CXX) $^ -o $@ $(FLAGS)
 
 .PHONY: clean
