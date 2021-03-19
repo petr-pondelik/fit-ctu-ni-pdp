@@ -317,6 +317,19 @@ public:
         this->nextMove = nextMove;
     }
 
+    bool compare(State &other) {
+        if (!(this->game.chessBoard.rookPosition == other.game.chessBoard.rookPosition)) {
+            return false;
+        }
+        if (!(this->game.chessBoard.knightPosition == other.game.chessBoard.knightPosition)) {
+            return false;
+        }
+        if (this->game.chessBoard.pawnsCnt != other.game.chessBoard.pawnsCnt) {
+            return false;
+        }
+        return this->game.chessBoard.board == other.game.chessBoard.board;
+    }
+
 };
 
 /** Komparační funkce pro setřídění stavů dle jejich perspektivy */
@@ -416,8 +429,36 @@ int main(int argc, char *argv[]) {
     chrono::steady_clock::time_point _start(chrono::steady_clock::now());
 
     getPrimalStates(initialState, primalStates);
-
     sort(primalStates.begin(), primalStates.end(), compareStates);
+//    cout << "PrimalStates cnt: " << primalStates.size() << endl;
+
+//    primalStates[0].game.chessBoard.print();
+//    State testState = primalStates[0];
+//    testState.game.chessBoard.rookPosition = make_pair(0,0);
+//    testState.game.chessBoard.print();
+//    cout << "Same: " << primalStates[0].compare(testState) << endl;
+
+    vector<State> primalStatesUnique;
+
+    for (unsigned int i = 0; i < primalStates.size(); ++i) {
+        bool unique = true;
+        for (unsigned int j = i + 1; j < primalStates.size(); ++j) {
+//            primalStates[i].game.chessBoard.print();
+//            cout << "Same: " << primalStates[0].compare(primalStates[1]) << endl;
+//            cout << "[" << i << "," << j << "]" << endl;
+            if (primalStates[i].compare(primalStates[j])) {
+                unique = false;
+            }
+        }
+        if (unique) {
+            primalStatesUnique.push_back(primalStates[i]);
+        }
+    }
+
+//    cout << "PrimalStatesUnique cnt: " << primalStatesUnique.size() << endl;
+
+
+//    return 0;
 
 //    for (unsigned int i = 0; i < primalStates.size(); ++i) {
 //        cout << primalStates[i].depth << endl;
@@ -427,8 +468,8 @@ int main(int argc, char *argv[]) {
 //    }
 
     #pragma omp parallel for schedule(dynamic, 1) num_threads(THREAD_CNT)
-    for (unsigned int i = 0; i < primalStates.size(); ++i) {
-        solve(primalStates[i]);
+    for (unsigned int i = 0; i < primalStatesUnique.size(); ++i) {
+        solve(primalStatesUnique[i]);
     }
 
     chrono::steady_clock::time_point _end(chrono::steady_clock::now());
