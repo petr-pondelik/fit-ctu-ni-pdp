@@ -317,16 +317,21 @@ public:
         this->nextMove = nextMove;
     }
 
+    /** Porovnání aktuální stavu s jiným stavem */
     bool compare(State &other) {
+        /** Pokud je věž na jiné pozici, stavy se liší */
         if (!(this->game.chessBoard.rookPosition == other.game.chessBoard.rookPosition)) {
             return false;
         }
+        /** Pokud je jezdec na jiné pozici, stavy se liší */
         if (!(this->game.chessBoard.knightPosition == other.game.chessBoard.knightPosition)) {
             return false;
         }
+        /** Pokud se liší počet pěšáků, stavy se liší */
         if (this->game.chessBoard.pawnsCnt != other.game.chessBoard.pawnsCnt) {
             return false;
         }
+        /** V případě, že nebyl zjištěn rozdíl v jiných stavových proměnných, porovnej řetězce šachovnic */
         return this->game.chessBoard.board == other.game.chessBoard.board;
     }
 
@@ -341,9 +346,6 @@ void getPrimalStates(State state, vector <State> &states) {
     /** Pokud se nejezdná o počáteční krok, proveď tah */
     if (state.nextMove.second != -1) {
         state.move();
-//        cout << "Cost: " << cost << endl;
-//        cout << "Remaining depth: " << game.chessBoard.upperBound - cost << endl;
-//        state.game.chessBoard.print();
     }
 
     /** Pokud řešení nemůže být lepší než stávající nejlepší, nebo než lepší či rovno horní mezi, ukončí větev */
@@ -355,6 +357,10 @@ void getPrimalStates(State state, vector <State> &states) {
         return;
     }
 
+    /**
+     * Při dosažení požadované hloubky ulož získaný stav jakožto kořen podstromu stavového prostoru.
+     * Vynoř se z rekurze.
+     * */
     if (state.depth >= 3) {
         state.setNextMove(make_pair(make_pair(-1, -1), -1));
         states.push_back(state);
@@ -373,9 +379,6 @@ void solve(State state) {
     /** Pokud se nejezdná o počáteční krok, proveď tah */
     if (state.nextMove.second != -1) {
         state.move();
-//        cout << "Cost: " << cost << endl;
-//        cout << "Remaining depth: " << game.chessBoard.upperBound - cost << endl;
-//        state.game.chessBoard.print();
     }
 
     /** V případě nalezení lepšího řešení, aktualizuj stávající nejlepší */
@@ -418,34 +421,26 @@ int main(int argc, char *argv[]) {
     }
 
     /** Inicializace problému */
-
     Game game = Game();
     game.initGame(k, upperbound, boardStr);
 
+    /** Vytvoření kořenu stavového prostoru */
     State initialState = State(game, make_pair(make_pair(-1, -1), -1), 0, OPT_CONFIGURATION);
 
+    /** Vektor pro uložení počátečních stavů */
     vector<State> primalStates;
 
     chrono::steady_clock::time_point _start(chrono::steady_clock::now());
 
+    /** Vygenerování počátečních stavů a jejich seřazení dle prosperity (počtu odstraněných pěšáků) */
     getPrimalStates(initialState, primalStates);
     sort(primalStates.begin(), primalStates.end(), compareStates);
-//    cout << "PrimalStates cnt: " << primalStates.size() << endl;
 
-//    primalStates[0].game.chessBoard.print();
-//    State testState = primalStates[0];
-//    testState.game.chessBoard.rookPosition = make_pair(0,0);
-//    testState.game.chessBoard.print();
-//    cout << "Same: " << primalStates[0].compare(testState) << endl;
-
+    /** Odstranění duplicitních stavů */
     vector<State> primalStatesUnique;
-
     for (unsigned int i = 0; i < primalStates.size(); ++i) {
         bool unique = true;
         for (unsigned int j = i + 1; j < primalStates.size(); ++j) {
-//            primalStates[i].game.chessBoard.print();
-//            cout << "Same: " << primalStates[0].compare(primalStates[1]) << endl;
-//            cout << "[" << i << "," << j << "]" << endl;
             if (primalStates[i].compare(primalStates[j])) {
                 unique = false;
             }
@@ -455,20 +450,10 @@ int main(int argc, char *argv[]) {
         }
     }
 
-//    cout << "PrimalStatesUnique cnt: " << primalStatesUnique.size() << endl;
-
-
-//    return 0;
-
-//    for (unsigned int i = 0; i < primalStates.size(); ++i) {
-//        cout << primalStates[i].depth << endl;
-//        cout << "[" << primalStates[i].nextMove.first.first << "," << primalStates[i].nextMove.first.second <<  "]" << endl;
-//        primalStates[i].game.chessBoard.print();
-//        cout << primalStates[i].game.chessBoard.pawnsCnt << endl;
-//    }
-
+    /** Paralelní zpracování pomocí paralelního cyklu */
     #pragma omp parallel for schedule(dynamic, 1) num_threads(THREAD_CNT)
     for (unsigned int i = 0; i < primalStatesUnique.size(); ++i) {
+        /** Řeš daný podstrom SP */
         solve(primalStatesUnique[i]);
     }
 
