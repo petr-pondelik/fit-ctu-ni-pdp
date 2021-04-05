@@ -223,7 +223,7 @@ public:
                 nextMoves.push_back(make_pair(make_pair(position.first, i), val));
             }
         }
-        for (short i = 0; i < this->chessBoard.k; i++) {
+        for (short i = 0; i < this->chessBoard.k; ++i) {
             if (this->chessBoard.canMoveRookTo(i, position.second)) {
                 short tile = this->chessBoard.getTile(i, position.second);
                 short val = this->valRook(i, position.second, tile);
@@ -302,7 +302,7 @@ void solve(Game game, pair<pair<short, short>, short> dest, unsigned int cost, v
         OPT_CONFIGURATION = conf;
     }
     ITERATION++;
-    /** Pokud řešení nemůže být lepší než stávající nejlepší, nebo než lepší či rovno horní mezi, ukončí větev */
+    /** Pokud řešení nemůže být lepší než stávající nejlepší, nebo lepší či rovno horní mezi, ukončí větev */
     if ( ((cost + game.chessBoard.pawnsCnt) >= OPT_COST) || ((cost + game.chessBoard.pawnsCnt) > game.chessBoard.upperBound) ) {
         return;
     }

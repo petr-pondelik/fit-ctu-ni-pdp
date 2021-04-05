@@ -432,7 +432,7 @@ int main(int argc, char *argv[]) {
 
     chrono::steady_clock::time_point _start(chrono::steady_clock::now());
 
-    /** Vygenerování počátečních stavů a jejich seřazení dle prosperity (počtu odstraněných pěšáků) */
+    /** Vygenerování počátečních stavů a jejich seřazení dle perspektivy (počtu odstraněných pěšáků) */
     getPrimalStates(initialState, primalStates);
     sort(primalStates.begin(), primalStates.end(), compareStates);
 

@@ -290,7 +290,7 @@ public:
 };
 
 void solve(Game game, pair<pair<short, short>, short> dest, unsigned short cost, vector<short> conf) {
-    /** Pokud se nejezdná o počáteční krok, proveď tah */
+    /** Pokud se nejedná o počáteční krok, proveď tah */
     if (dest.second != -1) {
         game.move(dest);
 //        cout << "Cost: " << cost << endl;
@@ -314,6 +314,7 @@ void solve(Game game, pair<pair<short, short>, short> dest, unsigned short cost,
     if ( ((cost + game.chessBoard.pawnsCnt) >= OPT_COST) || ((cost + game.chessBoard.pawnsCnt) > game.chessBoard.upperBound) ) {
         return;
     }
+
     /** Získej vektor dalších tahů seřazených dle ceny a rekurentně se zanoř */
     vector < pair < pair < short, short >, short >> moves = game.next();
     for (unsigned short i = 0; i < moves.size(); i++) {
