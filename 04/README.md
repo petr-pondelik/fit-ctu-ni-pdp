@@ -42,7 +42,7 @@ Na klastr star lze uploadovat například pomocí `scp`.
     scp data/* pondepe1@star.fit.cvut.cz:~/data
 
     # Upload solution source
-    scp 01/sequentional.cpp pondepe1@star.fit.cvut.cz:~/solution
+    scp 01/sequentional.cpp pondepe1@star.fit.cvut.cz:~/solution/01
 
 ### Naplánování úlohy na klastru star
 
@@ -50,4 +50,8 @@ Na klastr star lze uploadovat například pomocí `scp`.
     qrun 20c 1 pdp_serial ./sge_scripts/{script}.sh
 
     # Distribuovaná úloha na více nodech
-    qrun 20c 3 pdp_long ./sge_scripts/{script}.sh
+    qrun 20c 3 pdp_fast ./sge_scripts/{script}.sh
+
+### Kompilace MPI programu
+
+    mpic++ -o ~/output/mpi.out ~/solution/04/mpi.cpp -std=c++11

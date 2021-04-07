@@ -413,7 +413,7 @@ int main(int argc, char *argv[]) {
     cin >> k >> upperbound;
     THREAD_CNT = atoi(argv[1]);
 
-    /** Načtení řetězce čachovnice */
+    /** Načtení řetězce šachovnice */
     string tmp, boardStr;
     for (short i = 0; i < k; ++i) {
         cin >> tmp;
