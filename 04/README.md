@@ -54,4 +54,4 @@ Na klastr star lze uploadovat například pomocí `scp`.
 
 ### Kompilace MPI programu
 
-    mpic++ -o ~/output/mpi.out ~/solution/04/mpi.cpp -std=c++11
+    mpic++ -o ~/output/mpi.out ~/solution/04/mpi.cpp -Wall -pedantic -std=c++11 -fopenmp -O3

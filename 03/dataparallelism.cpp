@@ -352,7 +352,7 @@ void getPrimalStates(State state, vector <State> &states) {
     if (
             ((state.depth + state.game.chessBoard.pawnsCnt) >= OPT_COST) ||
             ((state.depth + state.game.chessBoard.pawnsCnt) > state.game.chessBoard.upperBound)
-            || state.depth > 3
+            || state.depth > 1
             ) {
         return;
     }
@@ -361,7 +361,7 @@ void getPrimalStates(State state, vector <State> &states) {
      * Při dosažení požadované hloubky ulož získaný stav jakožto kořen podstromu stavového prostoru.
      * Vynoř se z rekurze.
      * */
-    if (state.depth >= 3) {
+    if (state.depth >= 1) {
         state.setNextMove(make_pair(make_pair(-1, -1), -1));
         states.push_back(state);
         return;
@@ -424,6 +424,9 @@ int main(int argc, char *argv[]) {
     Game game = Game();
     game.initGame(k, upperbound, boardStr);
 
+    cout << "Initial state: " << endl;
+    game.chessBoard.print();
+
     /** Vytvoření kořenu stavového prostoru */
     State initialState = State(game, make_pair(make_pair(-1, -1), -1), 0, OPT_CONFIGURATION);
 
@@ -448,6 +451,10 @@ int main(int argc, char *argv[]) {
         if (unique) {
             primalStatesUnique.push_back(primalStates[i]);
         }
+    }
+
+    for (unsigned int i = 0; i < primalStatesUnique.size(); ++i) {
+        primalStatesUnique[i].game.chessBoard.print();
     }
 
     /** Paralelní zpracování pomocí paralelního cyklu */

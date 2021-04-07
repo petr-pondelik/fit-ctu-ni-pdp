@@ -374,6 +374,43 @@ Game init() {
 
 }
 
+void expandStates(State state, vector <State> &states, short &depth) {
+
+    /** If it's not the initial step, make a move */
+    if (state.nextMove.second != -1) {
+        state.move();
+    }
+
+    /** If the solution can't be better than the current one,
+     * or at least the same as the upper bound, return from the branch.
+     */
+    if (
+            ((state.cost + state.game.chessBoard.pawnsCnt) >= OPT_COST) ||
+            ((state.cost + state.game.chessBoard.pawnsCnt) > state.game.chessBoard.upperBound)
+            || state.cost > 3
+            ) {
+        return;
+    }
+
+    /**
+     * When the required depths is reached, store the state as a root of the subtree in the state space.
+     * Return from the recursion.
+     */
+    if (state.cost >= depth) {
+        state.setNextMove(make_pair(make_pair(-1, -1), -1));
+        states.push_back(state);
+        return;
+    }
+
+    /** Get vector of next moves sorted by their price and call the recursion. */
+    vector < pair < pair < short, short >, short >> moves = state.game.next();
+    for (unsigned short i = 0; i < moves.size(); i++) {
+        state.setNextMove(moves[i]);
+        expandStates(state, states, depth);
+    }
+
+}
+
 int main(int argc, char *argv[]) {
 
     checkInputArgs(argc, argv);
@@ -418,27 +455,38 @@ int main(int argc, char *argv[]) {
         State initState = State(problem, make_pair(make_pair(-1, -1), -1), 0);
 
         /** Vector for storing the master expansion states */
-        vector<State> masterExpandedStates;
+        vector<State> masterExpStates;
 
-//        /** Expand states and sort them by perspective (number of removed pawns) */
-//        getPrimalStates(initialState, primalStates);
-//        sort(primalStates.begin(), primalStates.end(), compareStates);
+        /** Expand states and sort them by perspective (number of removed pawns) */
+        expandStates(initState, masterExpStates, masterExpansionDepth);
+        sort(masterExpStates.begin(), masterExpStates.end(), compareStates);
+
+        /** Odstranění duplicitních stavů */
+        deque<State> masterExpStatesUnique;
+        for (unsigned int i = 0; i < masterExpStates.size(); ++i) {
+            bool unique = true;
+            for (unsigned int j = i + 1; j < masterExpStates.size(); ++j) {
+                if (masterExpStates[i].compare(masterExpStates[j])) {
+                    unique = false;
+                }
+            }
+            if (unique) {
+                masterExpStatesUnique.push_back(masterExpStates[i]);
+            }
+        }
+
+        cout << "[MASTER] Expanded states" << endl;
+
+        for (unsigned int i = 0; i < masterExpStatesUnique.size(); ++i) {
+            masterExpStatesUnique[i].game.chessBoard.print();
+        }
+
+        /** Distribute expanded states to the slaves */
+//        while (!masterExpStatesUnique.empty()) {
 //
-//        /** Odstranění duplicitních stavů */
-//        vector<State> primalStatesUnique;
-//        for (unsigned int i = 0; i < primalStates.size(); ++i) {
-//            bool unique = true;
-//            for (unsigned int j = i + 1; j < primalStates.size(); ++j) {
-//                if (primalStates[i].compare(primalStates[j])) {
-//                    unique = false;
-//                }
-//            }
-//            if (unique) {
-//                primalStatesUnique.push_back(primalStates[i]);
-//            }
+//
+//
 //        }
-
-        // TODO
 
     } else {
 
