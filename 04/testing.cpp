@@ -5,7 +5,6 @@
 #include <bits/stdc++.h>
 #include <limits>
 #include <omp.h>
-#include <mpi.h>
 #include <chrono>
 
 using namespace std;
@@ -13,8 +12,8 @@ using namespace std;
 // =====================================================================================================================
 // CONSTANTS
 
-#define MAX_K = 400
-#define MAX_PATH = 50
+#define MAX_K 400
+#define MAX_PATH 50
 
 // =====================================================================================================================
 // GLOBAL VARIABLES
@@ -38,18 +37,6 @@ struct state_structure {
     short path[MAX_PATH];
     short nextMove[3];
 };
-
-//MPI_Datatype state_structure_type;
-//
-//int state_structure_lengths[4] = { MAX_K, 2, 2, 1, };
-//
-//const MPI_Aint mss_displacements[4] = { 0,
-//                                        MAX_N * sizeof(bool),
-//                                        MAX_N * sizeof(bool) + sizeof(int),
-//                                        MAX_N * sizeof(bool) + sizeof(int) + sizeof(uint) };
-//
-//MPI_Datatype mss_types[4] = { MPI_C_BOOL, MPI_INT, MPI_UNSIGNED, MPI_DOUBLE };
-
 
 // =====================================================================================================================
 
@@ -236,6 +223,8 @@ public:
     /** Construct state object from structure */
     Game(const state_structure s): turn(s.turn) {
         this->chessBoard = ChessBoard(s);
+        cout << "Turn: " << this->turn << endl;
+        this->chessBoard.print();
     }
 
     /** Pole skoků jezdce */
@@ -365,11 +354,23 @@ public:
 
     /** Construct state object from structure */
     State(const state_structure s): cost(s.cost) {
+        cout << "Construct state from structure" << endl;
+
+        cout << "Cost:" << this->cost << endl;
+
         for (int i = 0; i < MAX_PATH; ++i) {
             if (s.path[i] == 0) { break; }
             this->path.push_back(s.path[i]);
         }
+        cout << "Path: ";
+        for (unsigned int i = 0; i < this->path.size(); ++i) {
+            cout << this->path[i] << " ";
+        }
+        cout << endl;
+
         this->nextMove = make_pair(make_pair(s.nextMove[0], s.nextMove[1]), s.nextMove[2]);
+        cout << "Next move: [ [" << this->nextMove.first.first << "," << this->nextMove.first.second << "], " << this->nextMove.second << "]" << endl;
+
         this->game = Game(s);
     }
 
@@ -506,88 +507,69 @@ void expandStates(State state, vector <State> &states, short &depth) {
 
 int main(int argc, char *argv[]) {
 
-    checkInputArgs(argc, argv);
-
-    /** Check if the MPI satisfies requirements */
-    int required = MPI_THREAD_FUNNELED;
-    int provided;
-    MPI_Init_thread(&argc, &argv, required, &provided);
-    if (provided < required) {
-        throw std::runtime_error("MPI library does not provide required threading support.");
-    }
-
-    /** Get the number of process and total number of processes */
-    int procNumber, procTotal;
-    MPI_Comm_rank(MPI_COMM_WORLD, &procNumber);
-    MPI_Comm_size(MPI_COMM_WORLD, &procTotal);
-
     short masterExpansionDepth = atoi(argv[1]);
     short slaveExpansionDepth = atoi(argv[2]);
 
-    if (procNumber == 0) {
+    Game problem = init();
+    problem.chessBoard.print();
 
-        /** Master process */
+    /** Create root of the state space */
+    State initState = State(problem, make_pair(make_pair(-1, -1), -1), 0);
 
-        cout << "[MASTER]" << endl;
+    /** Vector for storing the master expansion states */
+    vector<State> masterExpStates;
 
-        cout << "[INIT] Required: " << required << endl;
-        cout << "[INIT] Provided: " << provided << endl;
+    /** Expand states and sort them by perspective (number of removed pawns) */
+    expandStates(initState, masterExpStates, masterExpansionDepth);
+    sort(masterExpStates.begin(), masterExpStates.end(), compareStates);
 
-        cout << "[INIT] Processes total: " << procTotal << endl;
-        cout << "[INIT] Process number: " << procTotal << endl;
-
-        cout << "[INIT] Master expansion depth: " << masterExpansionDepth << endl;
-        cout << "[INIT] Slave expansion depth: " << slaveExpansionDepth << endl;
-
-        Game problem = init();
-
-        cout << "[MASTER] Problem initialized" << endl;
-        problem.chessBoard.print();
-
-        /** Create root of the state space */
-        State initState = State(problem, make_pair(make_pair(-1, -1), -1), 0);
-
-        /** Vector for storing the master expansion states */
-        vector<State> masterExpStates;
-
-        /** Expand states and sort them by perspective (number of removed pawns) */
-        expandStates(initState, masterExpStates, masterExpansionDepth);
-        sort(masterExpStates.begin(), masterExpStates.end(), compareStates);
-
-        /** Odstranění duplicitních stavů */
-        deque<State> masterExpStatesUnique;
-        for (unsigned int i = 0; i < masterExpStates.size(); ++i) {
-            bool unique = true;
-            for (unsigned int j = i + 1; j < masterExpStates.size(); ++j) {
-                if (masterExpStates[i].compare(masterExpStates[j])) {
-                    unique = false;
-                }
-            }
-            if (unique) {
-                masterExpStatesUnique.push_back(masterExpStates[i]);
+    /** Odstranění duplicitních stavů */
+    deque<State> masterExpStatesUnique;
+    for (unsigned int i = 0; i < masterExpStates.size(); ++i) {
+        bool unique = true;
+        for (unsigned int j = i + 1; j < masterExpStates.size(); ++j) {
+            if (masterExpStates[i].compare(masterExpStates[j])) {
+                unique = false;
             }
         }
-
-        cout << "[MASTER] Expanded states" << endl;
-
-        for (unsigned int i = 0; i < masterExpStatesUnique.size(); ++i) {
-            masterExpStatesUnique[i].game.chessBoard.print();
+        if (unique) {
+            masterExpStatesUnique.push_back(masterExpStates[i]);
         }
-
-        /** Distribute expanded states to the slaves */
-//        while (!masterExpStatesUnique.empty()) {
-//
-//        }
-
-    } else {
-
-        /** Slave process */
-
-        cout << "[SLAVE " << procNumber << "]" << endl;
-
-        // TODO
-
     }
 
-    MPI_Finalize();
+    /** Testing state's state_structure conversion method */
+
+    masterExpStatesUnique[0].game.chessBoard.print();
+
+    state_structure s = masterExpStatesUnique[0].toStruct();
+
+    cout << s.board << endl;
+    cout << "[" << s.rookPosition[0] << ", " << s.rookPosition[1] << "]" << endl;
+    cout << "[" << s.knightPosition[0] << ", " << s.knightPosition[1] << "]" << endl;
+    cout << s.k << endl;
+    cout << s.pawnsCnt << endl;
+    cout << s.lowerBound << endl;
+    cout << s.upperBound << endl;
+    cout << s.turn << endl;
+    cout << s.cost << endl;
+    for (unsigned int i = 0; i < 50; i++) {
+        cout << s.path[i] << " ";
+    }
+    cout << endl;
+
+    cout << "[" << s.nextMove[0] << "," << s.nextMove[1] << "," << s.nextMove[2] << "]" << endl << endl;
+
+//    char board[MAX_K];
+//    short rookPosition[2];
+//    short knightPosition[2];
+//    unsigned short k;
+//    unsigned short pawnsCnt;
+//    unsigned short lowerBound;
+//    unsigned short upperBound;
+//    char turn;
+//    unsigned short cost;
+//    short path[MAX_PATH];
+//    short nextMove[3];
+
+    State constructed = State(s);
 }
