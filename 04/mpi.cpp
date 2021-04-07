@@ -10,20 +10,24 @@
 
 using namespace std;
 
-// =====================================================================================================================
-// CONSTANTS
+// ======================================= CONSTANTS ===================================================================
 
-#define MAX_K = 400
-#define MAX_PATH = 50
+/** Size constants */
+#define MAX_K 400
+#define MAX_PATH 50
 
-// =====================================================================================================================
-// GLOBAL VARIABLES
+/** Custom MPI tags */
+#define TAG_WORK 1
+#define TAG_UPDATE 2
+#define TAG_DONE 3
+#define TAG_FINISHED 4
+
+// ======================================= GLOBAL VARIABLES ============================================================
 
 unsigned int OPT_COST = numeric_limits<unsigned int>::max();
 unsigned short THREAD_CNT;
 
-// =====================================================================================================================
-// MPI state structure
+// ======================================= MPI STATE STRUCTURE =========================================================
 
 struct state_structure {
     char board[MAX_K];
@@ -51,7 +55,7 @@ struct state_structure {
 //MPI_Datatype mss_types[4] = { MPI_C_BOOL, MPI_INT, MPI_UNSIGNED, MPI_DOUBLE };
 
 
-// =====================================================================================================================
+// ======================================= APPLICATION LOGIC ===========================================================
 
 /** Reprezentace šachovnice */
 class ChessBoard {
@@ -554,8 +558,8 @@ int main(int argc, char *argv[]) {
         expandStates(initState, masterExpStates, masterExpansionDepth);
         sort(masterExpStates.begin(), masterExpStates.end(), compareStates);
 
-        /** Odstranění duplicitních stavů */
-        deque<State> masterExpStatesUnique;
+        /** Remove duplicate states */
+        deque<State> masterTasks;
         for (unsigned int i = 0; i < masterExpStates.size(); ++i) {
             bool unique = true;
             for (unsigned int j = i + 1; j < masterExpStates.size(); ++j) {
@@ -564,20 +568,58 @@ int main(int argc, char *argv[]) {
                 }
             }
             if (unique) {
-                masterExpStatesUnique.push_back(masterExpStates[i]);
+                masterTasks.push_back(masterExpStates[i]);
             }
         }
 
-        cout << "[MASTER] Expanded states" << endl;
+        cout << "[MASTER] Tasks" << endl;
 
-        for (unsigned int i = 0; i < masterExpStatesUnique.size(); ++i) {
-            masterExpStatesUnique[i].game.chessBoard.print();
+        for (unsigned int i = 0; i < masterTasks.size(); ++i) {
+            masterTasks[i].game.chessBoard.print();
         }
 
-        /** Distribute expanded states to the slaves */
-//        while (!masterExpStatesUnique.empty()) {
-//
-//        }
+        queue<short> freeSlaves = {};
+        for (int i = 1; i < procTotal; i++) {
+            freeSlaves.push(i);
+        }
+
+        /** Distribute expanded tasks to the slaves */
+        while (!masterTasks.empty()) {
+            state_structure s = masterTasks.front();
+            masterTasks.pop_front();
+            MPI_Send (&s, sizeof(state_structure), MPI_CHAR, freeSlaves.front(), TAG_WORK, MPI_COMM_WORLD);
+            freeSlaves.pop();
+
+            while(freeSlaves.empty()) {
+                MPI_Status status;
+                MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+                if (status.MPI_TAG == TAG_UPDATE) {
+                    // TODO
+                } else if (status.MPI_TAG == TAG_DONE) {
+                    // TODO
+                } else {
+                    throw std::runtime_error("[MASTER] Unknown message received.");
+                    break;
+                }
+            }
+        }
+
+        /** All slaves finished given tasks
+         *  (All slaves sent TAG_DONE and master didn't have any tasks left)
+         */
+        cout << "[MASTER] No tasks left." << endl;
+        cout << "[MASTER] Running slaves number: " << (procNumber - freeSlaves.size() - 1) << endl;
+        for (int i = freeSlaves.size(); i < procNumber - 1; i++) {
+            // TODO
+        }
+
+        cout << "[MASTER] Began terminating slaves." << endl;
+
+        for (int i = 0; i < procNumber; i++) {
+            // TODO
+        }
+
+        cout << "[MASTER] All slaves terminated." << endl;
 
     } else {
 

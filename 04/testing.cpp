@@ -572,4 +572,7 @@ int main(int argc, char *argv[]) {
 //    short nextMove[3];
 
     State constructed = State(s);
+
+    cout << sizeof(state_structure) << endl;
+    cout << sizeof(bool) << endl;
 }
