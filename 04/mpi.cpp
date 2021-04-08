@@ -585,17 +585,31 @@ int main(int argc, char *argv[]) {
 
         /** Distribute expanded tasks to the slaves */
         while (!masterTasks.empty()) {
-            state_structure s = masterTasks.front();
+            state_structure serialized = masterTasks.front();
             masterTasks.pop_front();
-            MPI_Send (&s, sizeof(state_structure), MPI_CHAR, freeSlaves.front(), TAG_WORK, MPI_COMM_WORLD);
+            MPI_Send (&serialized, sizeof(state_structure), MPI_CHAR, freeSlaves.front(), TAG_WORK, MPI_COMM_WORLD);
             freeSlaves.pop();
 
+            /** If all the slaves are working, wait for a message from any slave */
             while(freeSlaves.empty()) {
                 MPI_Status status;
                 MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+                /**
+                 * If master received message with update tag:
+                 *      1) Try to update optimal price
+                 */
                 if (status.MPI_TAG == TAG_UPDATE) {
-                    // TODO
+                    unsigned int cost;
+                    MPI_Recv(&cost, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TAG_UPDATE, MPI_COMM_WORLD, &status);
+                    cout << "[MASTER] Received cost [" << cost << "] from [" << status.MPI_SOURCE << "]" << endl;
+                    if (cost < OPT_COST) {
+                        cout << "[MASTER] New optimal cost [" << cost << "]" << endl;
+                        OPT_COST = cost;
+                        // TODO: Maybe notify all the slaves about the new optimal cost
+                    }
                 } else if (status.MPI_TAG == TAG_DONE) {
+                    MPI_Rect(&serialized, sizeof(state_structure), MPI_CHAR, MPI_ANY_SOURCE, TAG_DONE, MPI_COMM_WORLD, &status);
+                    State deserialized = State(s);
                     // TODO
                 } else {
                     throw std::runtime_error("[MASTER] Unknown message received.");
