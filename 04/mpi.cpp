@@ -22,9 +22,12 @@ using namespace std;
 #define TAG_DONE 3
 #define TAG_FINISHED 4
 
+#define MASTER_PROCESS 0
+
 // ======================================= GLOBAL VARIABLES ============================================================
 
 unsigned int OPT_COST = numeric_limits<unsigned int>::max();
+//unsigned int OPT_COST = 10000;
 unsigned short THREAD_CNT;
 
 // ======================================= MPI STATE STRUCTURE =========================================================
@@ -208,18 +211,15 @@ public:
                 to_string(this->knightPosition.second) + "]" << endl;
     }
 
-    void print() {
-        cout << endl;
-        cout << "Pawns: " << this->pawnsCnt << endl;
-        cout << "Lower bound: " << this->lowerBound << endl;
-        cout << "Upper bound: " << this->upperBound << endl;
+    string serialize() {
+        string board = "";
         for (short i = 0; i < k; ++i) {
             for (short j = 0; j < k; ++j) {
-                cout << this->board[this->mapPosition(i, j)];
+                board += this->board[this->mapPosition(i, j)];
             }
-            cout << endl;
+            board += '\n';
         }
-        cout << endl;
+        return "Pawns: " + to_string(this->pawnsCnt) + "\nLowerBound: " + to_string(this->lowerBound) + "\nUpperBound: " + to_string(this->upperBound) + "\n" + board;
     }
 };
 
@@ -349,6 +349,13 @@ public:
             this->turn = 'V';
         }
     }
+
+    string serialize() {
+        string res = this->chessBoard.serialize();
+        res += "Turn: ";
+        res += this->turn;
+        return res;
+    }
 };
 
 class State {
@@ -431,6 +438,17 @@ public:
         return res;
     }
 
+    string serialize() {
+        string res = this->game.serialize() + "\n";
+        res += ("Cost: " + to_string(this->cost) + "\n");
+        res += "Path: [";
+        for (size_t i = 0; i < this->path.size(); ++i) {
+            res += (to_string(this->path[i]) + ", ");
+        }
+        res += "]\n";
+        return res;
+    }
+
 };
 
 /** Komparační funkce pro setřídění stavů dle jejich perspektivy */
@@ -508,6 +526,54 @@ void expandStates(State state, vector <State> &states, short &depth) {
 
 }
 
+void filterStates(vector<State> &input, deque<State> &output) {
+    for (unsigned int i = 0; i < input.size(); ++i) {
+        bool unique = true;
+        for (unsigned int j = i + 1; j < input.size(); ++j) {
+            if (input[i].compare(input[j])) {
+                unique = false;
+            }
+        }
+        if (unique) {
+            output.push_back(input[i]);
+        }
+    }
+}
+
+void solve(State state, int &procNumber) {
+    /** Pokud se nejezdná o počáteční krok, proveď tah */
+    if (state.nextMove.second != -1) {
+        state.move();
+    }
+
+    /** V případě nalezení lepšího řešení, aktualizuj stávající nejlepší */
+    if (state.game.chessBoard.pawnsCnt == 0 && state.cost < OPT_COST) {
+    #pragma omp critical
+        {
+            if (state.game.chessBoard.pawnsCnt == 0 && state.cost < OPT_COST) {
+                printf("[SLAVE-%d] Found better solution [%d]\n", procNumber, state.cost);
+                OPT_COST = state.cost;
+                OPT_STATE = state;
+            }
+        }
+    }
+
+    /** Pokud řešení nemůže být lepší než stávající nejlepší, nebo než lepší či rovno horní mezi, ukončí větev */
+    if (
+            ((state.cost + state.game.chessBoard.pawnsCnt) >= OPT_COST) ||
+            ((state.cost + state.game.chessBoard.pawnsCnt) > state.game.chessBoard.upperBound)
+            ) {
+        return;
+    }
+
+    /** Získej vektor dalších tahů seřazených dle ceny a rekurentně se zanoř */
+    vector < pair < pair < short, short >, short >> moves = state.game.next();
+    for (unsigned short i = 0; i < moves.size(); i++) {
+        state.setNextMove(moves[i]);
+        solve(state, procNumber);
+    }
+}
+
 int main(int argc, char *argv[]) {
 
     checkInputArgs(argc, argv);
@@ -546,7 +612,7 @@ int main(int argc, char *argv[]) {
         Game problem = init();
 
         cout << "[MASTER] Problem initialized" << endl;
-        problem.chessBoard.print();
+        printf("%s\n\n", problem.serialize().c_str());
 
         /** Create root of the state space */
         State initState = State(problem, make_pair(make_pair(-1, -1), -1), 0);
@@ -560,22 +626,11 @@ int main(int argc, char *argv[]) {
 
         /** Remove duplicate states */
         deque<State> masterTasks;
-        for (unsigned int i = 0; i < masterExpStates.size(); ++i) {
-            bool unique = true;
-            for (unsigned int j = i + 1; j < masterExpStates.size(); ++j) {
-                if (masterExpStates[i].compare(masterExpStates[j])) {
-                    unique = false;
-                }
-            }
-            if (unique) {
-                masterTasks.push_back(masterExpStates[i]);
-            }
-        }
+        filterStates(masterExpStates, masterTasks);
 
         cout << "[MASTER] Tasks" << endl;
-
         for (unsigned int i = 0; i < masterTasks.size(); ++i) {
-            masterTasks[i].game.chessBoard.print();
+            printf("%s\n\n", masterTasks[i].serialize().c_str());
         }
 
         queue<short> freeSlaves = {};
@@ -585,15 +640,16 @@ int main(int argc, char *argv[]) {
 
         /** Distribute expanded tasks to the slaves */
         while (!masterTasks.empty()) {
-            state_structure serialized = masterTasks.front();
+            state_structure taskStruct = masterTasks.front().toStruct();
             masterTasks.pop_front();
-            MPI_Send (&serialized, sizeof(state_structure), MPI_CHAR, freeSlaves.front(), TAG_WORK, MPI_COMM_WORLD);
+            MPI_Send(&taskStruct, sizeof(state_structure), MPI_CHAR, freeSlaves.front(), TAG_WORK, MPI_COMM_WORLD);
             freeSlaves.pop();
 
             /** If all the slaves are working, wait for a message from any slave */
             while(freeSlaves.empty()) {
                 MPI_Status status;
                 MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+
                 /**
                  * If master received message with update tag:
                  *      1) Try to update optimal price
@@ -601,16 +657,25 @@ int main(int argc, char *argv[]) {
                 if (status.MPI_TAG == TAG_UPDATE) {
                     unsigned int cost;
                     MPI_Recv(&cost, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TAG_UPDATE, MPI_COMM_WORLD, &status);
-                    cout << "[MASTER] Received cost [" << cost << "] from [" << status.MPI_SOURCE << "]" << endl;
+                    cout << "[MASTER] Received cost [" << cost << "] from [SLAVE-" << status.MPI_SOURCE << "]" << endl;
                     if (cost < OPT_COST) {
                         cout << "[MASTER] New optimal cost [" << cost << "]" << endl;
                         OPT_COST = cost;
                         // TODO: Maybe notify all the slaves about the new optimal cost
                     }
                 } else if (status.MPI_TAG == TAG_DONE) {
-                    MPI_Rect(&serialized, sizeof(state_structure), MPI_CHAR, MPI_ANY_SOURCE, TAG_DONE, MPI_COMM_WORLD, &status);
-                    State deserialized = State(s);
-                    // TODO
+                    MPI_Recv(&taskStruct, sizeof(state_structure), MPI_CHAR, MPI_ANY_SOURCE, TAG_DONE, MPI_COMM_WORLD, &status);
+                    State deserialized = State(taskStruct);
+                    printf("[MASTER] Received DONE from SLAVE-%d\n\n", status.MPI_SOURCE);
+                    printf("[MASTER] Received state:\n%s\n\n", deserialized.serialize().c_str());
+                    printf("[MASTER] Optimal cost: %d\n\n", OPT_COST);
+                    if (deserialized.cost < OPT_COST) {
+                        printf("[MASTER] Update optimum [%d] -> [%d]\n\n", OPT_COST, deserialized.cost);
+                        OPT_COST = deserialized.cost;
+                        OPT_STATE = deserialized;
+                    }
+                    freeSlaves.push(status.MPI_SOURCE);
+                    break;
                 } else {
                     throw std::runtime_error("[MASTER] Unknown message received.");
                     break;
@@ -621,27 +686,107 @@ int main(int argc, char *argv[]) {
         /** All slaves finished given tasks
          *  (All slaves sent TAG_DONE and master didn't have any tasks left)
          */
-        cout << "[MASTER] No tasks left." << endl;
-        cout << "[MASTER] Running slaves number: " << (procNumber - freeSlaves.size() - 1) << endl;
-        for (int i = freeSlaves.size(); i < procNumber - 1; i++) {
-            // TODO
+        printf("[MASTER] No tasks left.\n\n");
+        printf("[MASTER] Running slaves number: %lu\n\n", (procTotal - 1) - freeSlaves.size());
+
+        for (int i = freeSlaves.size(); i < procTotal - 1; i++) {
+            state_structure stateStruct;
+            MPI_Status status;
+            MPI_Recv(&stateStruct, sizeof(state_structure), MPI_CHAR, MPI_ANY_SOURCE, TAG_DONE, MPI_COMM_WORLD, &status);
+            State deserialized = State(stateStruct);
+            printf("[MASTER] Received DONE from SLAVE-%d\n\n", status.MPI_SOURCE);
+            printf("[MASTER] Received state:\n%s\n\n", deserialized.serialize().c_str());
+            printf("[MASTER] Optimal cost: %d\n\n", OPT_COST);
+            if (deserialized.cost < OPT_COST) {
+                printf("[MASTER] Update optimum [%d] -> [%d]\n\n", OPT_COST, deserialized.cost);
+                OPT_COST = deserialized.cost;
+                OPT_STATE = deserialized;
+            }
         }
 
-        cout << "[MASTER] Began terminating slaves." << endl;
+        printf("[MASTER] Began terminating slaves.\n\n");
 
-        for (int i = 0; i < procNumber; i++) {
-            // TODO
+        for (int slaveId = 1; slaveId < procTotal; slaveId++) {
+            printf("[MASTER] Terminating SLAVE-%d\n\n", slaveId);
+            int msg = 1;
+            MPI_Send(&msg, 1, MPI_INT, slaveId, TAG_FINISHED, MPI_COMM_WORLD);
         }
 
-        cout << "[MASTER] All slaves terminated." << endl;
+        printf("[MASTER] All slaves terminated.\n\n");
+
+        printf("[MASTER] OPTIMAL SOLUTION:\n");
+        printf("Cost: %d\n", OPT_COST);
+        printf("Path: %d\n\n", OPT_STATE.path[0]);
+
+        short x, y;
+        vector<pair<short, short>> taken;
+        pair<short, short> coordinates;
+
+        /** Print the best found configuration */
+        string conf = "";
+        for (unsigned int i = 0; i < OPT_STATE.path.size(); ++i) {
+            conf += (i % 2 ? "J" : "V");
+            x = OPT_STATE.path[i] / 1000;
+            y = OPT_STATE.path[i] % 1000;
+            conf += ("[" + to_string(x) + " " + to_string(y) + "]");
+            coordinates = make_pair(x, y);
+            if (find(taken.begin(), taken.end(), coordinates) == taken.end()) {
+                if (problem.chessBoard.getTile(x, y) == 'P') {
+                    conf += "*";
+                }
+            }
+            if (i < OPT_STATE.path.size() - 1) {
+                conf += ", ";
+            }
+            taken.emplace_back(make_pair(x, y));
+        }
+
+        printf("%s\n\n", conf.c_str());
 
     } else {
 
         /** Slave process */
+        printf("[SLAVE-%d]\n\n", procNumber);
 
-        cout << "[SLAVE " << procNumber << "]" << endl;
+        while (true) {
+            MPI_Status status;
+            state_structure stateStruct;
+            MPI_Recv(&stateStruct, sizeof(state_structure), MPI_CHAR, MASTER_PROCESS, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-        // TODO
+            printf("[SLAVE-%d] Received tag [%d]\n\n", procNumber, status.MPI_TAG);
+
+            if (status.MPI_TAG == TAG_FINISHED) {
+                printf("[SLAVE-%d] Finished\n\n", procNumber);
+                break;
+            }
+
+            State task = State(stateStruct);
+            printf("[SLAVE-%d] Received task:\n%s\n\n", procNumber, task.serialize().c_str());
+
+            vector<State> slaveExpStates;
+
+            /** Expand states and sort them by perspective (number of removed pawns) */
+            expandStates(task, slaveExpStates, slaveExpansionDepth);
+            sort(slaveExpStates.begin(), slaveExpStates.end(), compareStates);
+
+            printf("[SLAVE-%d] Tasks cnt [%lu]\n\n", procNumber, slaveExpStates.size());
+
+            /** Remove duplicate states */
+            deque<State> slaveTasks;
+            filterStates(slaveExpStates, slaveTasks);
+
+            /** Process task using parallel cycle */
+            #pragma omp parallel for schedule(dynamic, 1) num_threads(2)
+            for (unsigned int i = 0; i < slaveTasks.size(); ++i) {
+                /** Solve the given state space subtree */
+                solve(slaveTasks[i], procNumber);
+            }
+
+            stateStruct = OPT_STATE.toStruct();
+            printf("[SLAVE-%d] Task done.\n\n", procNumber);
+            printf("[SLAVE-%d] OPT_COST [%d]\n\n", procNumber, OPT_COST);
+            MPI_Send(&stateStruct, sizeof(state_structure), MPI_CHAR, MASTER_PROCESS, TAG_DONE, MPI_COMM_WORLD);
+        }
 
     }
 

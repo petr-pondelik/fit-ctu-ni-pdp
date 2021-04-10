@@ -2,6 +2,13 @@
 
 TODO
 
+## Lokální práce
+
+### Kompilace a spuštění MPI programu
+
+    mpic++ -o ./output/mpi.out mpi.cpp -Wall -pedantic -std=c++11 -fopenmp -O3
+    mpirun -np 3 ./output/mpi.out
+
 ## Klastr star.fit.cvut.cz
 
 ### Připojení pomocí SSH
