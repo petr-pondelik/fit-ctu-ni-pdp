@@ -26,8 +26,7 @@ using namespace std;
 
 // ======================================= GLOBAL VARIABLES ============================================================
 
-unsigned int OPT_COST = numeric_limits<unsigned int>::max();
-//unsigned int OPT_COST = 10000;
+unsigned short OPT_COST = numeric_limits<unsigned short>::max();
 unsigned short THREAD_CNT;
 
 // ======================================= MPI STATE STRUCTURE =========================================================
@@ -461,9 +460,9 @@ State OPT_STATE;
 
 /** Check validity of the input arguments */
 void checkInputArgs(const int &argc, char** argv) {
-    if (argc != 3) {
+    if (argc != 4) {
         char errMsg[200];
-        sprintf(errMsg, "Invalid number of arguments.\n%s <master_expansion_depth> <worker_expansion_depth>", argv[0]);
+        sprintf(errMsg, "Invalid number of arguments.\n%s <slave_threads> <master_expansion_depth> <slave_expansion_depth>", argv[0]);
         throw std::runtime_error(errMsg);
     }
 }
@@ -540,10 +539,38 @@ void filterStates(vector<State> &input, deque<State> &output) {
     }
 }
 
+/** Probe the global optimum from MASTER process in order to update local optimum */
+void slaveProbeGlobalOptimum() {
+    int flag;
+    #pragma omp critical
+    {
+        MPI_Iprobe(MASTER_PROCESS, TAG_UPDATE, MPI_COMM_WORLD, &flag, MPI_STATUS_IGNORE);
+        if (flag) {
+            unsigned short globalOptimum;
+            MPI_Recv(&globalOptimum, 1, MPI_UNSIGNED_SHORT, MASTER_PROCESS, TAG_UPDATE, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            int procNum;
+            MPI_Comm_rank(MPI_COMM_WORLD, &procNum);
+            if(globalOptimum <= OPT_COST) {
+                OPT_COST = globalOptimum;
+            }
+        }
+    }
+}
+
+/** Notify MASTER process about new local (within specific SLAVE process) optimal price. */
+void slaveNotifyLocalOptimum(const unsigned short &c) {
+    MPI_Request request = MPI_REQUEST_NULL;
+    MPI_Isend(&c, 1, MPI_UNSIGNED_SHORT, MASTER_PROCESS, TAG_UPDATE, MPI_COMM_WORLD, &request);
+}
+
+
 void solve(State state, int &procNumber) {
     /** Pokud se nejezdná o počáteční krok, proveď tah */
     if (state.nextMove.second != -1) {
         state.move();
+        if (state.cost % 3 == 2) {
+            slaveProbeGlobalOptimum();
+        }
     }
 
     /** V případě nalezení lepšího řešení, aktualizuj stávající nejlepší */
@@ -551,9 +578,10 @@ void solve(State state, int &procNumber) {
     #pragma omp critical
         {
             if (state.game.chessBoard.pawnsCnt == 0 && state.cost < OPT_COST) {
-                printf("[SLAVE-%d] Found better solution [%d]\n", procNumber, state.cost);
+//                printf("[SLAVE-%d] Found better solution [%d]\n", procNumber, state.cost);
                 OPT_COST = state.cost;
                 OPT_STATE = state;
+                slaveNotifyLocalOptimum(state.cost);
             }
         }
     }
@@ -591,28 +619,33 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &procNumber);
     MPI_Comm_size(MPI_COMM_WORLD, &procTotal);
 
-    short masterExpansionDepth = atoi(argv[1]);
-    short slaveExpansionDepth = atoi(argv[2]);
+    short slaveThreads = atoi(argv[1]);
+    short masterExpansionDepth = atoi(argv[2]);
+    short slaveExpansionDepth = atoi(argv[3]);
+
+    printf("[slaveThreads, masterExpansionDepth, slaveExpansionDepth] = [%d, %d, %d]\n\n", slaveThreads, masterExpansionDepth, slaveExpansionDepth);
 
     if (procNumber == 0) {
 
         /** Master process */
 
-        cout << "[MASTER]" << endl;
+        chrono::steady_clock::time_point _start(chrono::steady_clock::now());
 
-        cout << "[INIT] Required: " << required << endl;
-        cout << "[INIT] Provided: " << provided << endl;
-
-        cout << "[INIT] Processes total: " << procTotal << endl;
-        cout << "[INIT] Process number: " << procTotal << endl;
-
-        cout << "[INIT] Master expansion depth: " << masterExpansionDepth << endl;
-        cout << "[INIT] Slave expansion depth: " << slaveExpansionDepth << endl;
+//        printf("[MASTER]");
+//
+//        printf("[INIT] Required: %d\n\n", required);
+//        printf("[INIT] Provided: %d\n\n", provided);
+//
+//        printf("[INIT] Processes total: %d\n\n", procTotal);
+//        printf("[INIT] Process number: %d\n\n", procNumber);
+//
+//        printf("[INIT] Master expansion depth: %d\n\n", masterExpansionDepth);
+//        printf("[INIT] Slave expansion depth: %d\n\n", slaveExpansionDepth);
 
         Game problem = init();
 
-        cout << "[MASTER] Problem initialized" << endl;
-        printf("%s\n\n", problem.serialize().c_str());
+//        printf("[MASTER] Problem initialized\n\n");
+//        printf("%s\n\n", problem.serialize().c_str());
 
         /** Create root of the state space */
         State initState = State(problem, make_pair(make_pair(-1, -1), -1), 0);
@@ -628,10 +661,10 @@ int main(int argc, char *argv[]) {
         deque<State> masterTasks;
         filterStates(masterExpStates, masterTasks);
 
-        cout << "[MASTER] Tasks" << endl;
-        for (unsigned int i = 0; i < masterTasks.size(); ++i) {
-            printf("%s\n\n", masterTasks[i].serialize().c_str());
-        }
+//        cout << "[MASTER] Tasks" << endl;
+//        for (unsigned int i = 0; i < masterTasks.size(); ++i) {
+//            printf("%s\n\n", masterTasks[i].serialize().c_str());
+//        }
 
         queue<short> freeSlaves = {};
         for (int i = 1; i < procTotal; i++) {
@@ -655,22 +688,32 @@ int main(int argc, char *argv[]) {
                  *      1) Try to update optimal price
                  */
                 if (status.MPI_TAG == TAG_UPDATE) {
-                    unsigned int cost;
+                    unsigned short cost;
                     MPI_Recv(&cost, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TAG_UPDATE, MPI_COMM_WORLD, &status);
-                    cout << "[MASTER] Received cost [" << cost << "] from [SLAVE-" << status.MPI_SOURCE << "]" << endl;
-                    if (cost < OPT_COST) {
-                        cout << "[MASTER] New optimal cost [" << cost << "]" << endl;
+                    printf("[MASTER] Received cost [%d] from [SLAVE-%d]\n\n", cost, status.MPI_SOURCE);
+                    if (cost > 0 && cost <= OPT_COST) {
+                        printf("[MASTER] New optimal cost [%d]\n\n", cost);
                         OPT_COST = cost;
                         // TODO: Maybe notify all the slaves about the new optimal cost
+                        for (int dest = 1; dest < procTotal; dest++)
+                        {
+                            if (dest != status.MPI_SOURCE) {
+                                /// cout << "[MASTER]: Sending cost : " << cost << " to WORKER-" << dest << endl;
+                                MPI_Send(&cost, 1, MPI_UNSIGNED_SHORT, dest, TAG_UPDATE, MPI_COMM_WORLD);
+                            }
+                        }
+                    }
+                    else {
+                        MPI_Send(&OPT_COST, 1, MPI_UNSIGNED_SHORT, status.MPI_SOURCE, TAG_UPDATE, MPI_COMM_WORLD);
                     }
                 } else if (status.MPI_TAG == TAG_DONE) {
                     MPI_Recv(&taskStruct, sizeof(state_structure), MPI_CHAR, MPI_ANY_SOURCE, TAG_DONE, MPI_COMM_WORLD, &status);
                     State deserialized = State(taskStruct);
-                    printf("[MASTER] Received DONE from SLAVE-%d\n\n", status.MPI_SOURCE);
-                    printf("[MASTER] Received state:\n%s\n\n", deserialized.serialize().c_str());
-                    printf("[MASTER] Optimal cost: %d\n\n", OPT_COST);
-                    if (deserialized.cost < OPT_COST) {
-                        printf("[MASTER] Update optimum [%d] -> [%d]\n\n", OPT_COST, deserialized.cost);
+//                    printf("[MASTER] Received DONE from SLAVE-%d\n\n", status.MPI_SOURCE);
+//                    printf("[MASTER] Received state:\n%s\n\n", deserialized.serialize().c_str());
+//                    printf("[MASTER] Optimal cost: %d\n\n", OPT_COST);
+                    if (deserialized.cost > 0 && deserialized.cost <= OPT_COST) {
+//                        printf("[MASTER] Update optimum [%d] -> [%d]\n\n", OPT_COST, deserialized.cost);
                         OPT_COST = deserialized.cost;
                         OPT_STATE = deserialized;
                     }
@@ -686,37 +729,38 @@ int main(int argc, char *argv[]) {
         /** All slaves finished given tasks
          *  (All slaves sent TAG_DONE and master didn't have any tasks left)
          */
-        printf("[MASTER] No tasks left.\n\n");
-        printf("[MASTER] Running slaves number: %lu\n\n", (procTotal - 1) - freeSlaves.size());
+//        printf("[MASTER] No tasks left.\n\n");
+//        printf("[MASTER] Running slaves number: %lu\n\n", (procTotal - 1) - freeSlaves.size());
 
         for (int i = freeSlaves.size(); i < procTotal - 1; i++) {
             state_structure stateStruct;
             MPI_Status status;
             MPI_Recv(&stateStruct, sizeof(state_structure), MPI_CHAR, MPI_ANY_SOURCE, TAG_DONE, MPI_COMM_WORLD, &status);
             State deserialized = State(stateStruct);
-            printf("[MASTER] Received DONE from SLAVE-%d\n\n", status.MPI_SOURCE);
-            printf("[MASTER] Received state:\n%s\n\n", deserialized.serialize().c_str());
-            printf("[MASTER] Optimal cost: %d\n\n", OPT_COST);
-            if (deserialized.cost < OPT_COST) {
-                printf("[MASTER] Update optimum [%d] -> [%d]\n\n", OPT_COST, deserialized.cost);
+//            printf("[MASTER] Received DONE from SLAVE-%d\n\n", status.MPI_SOURCE);
+//            printf("[MASTER] Received state:\n%s\n\n", deserialized.serialize().c_str());
+//            printf("[MASTER] Optimal cost: %d\n\n", OPT_COST);
+            if (deserialized.cost > 0 && deserialized.cost <= OPT_COST) {
+//                printf("[MASTER] Update optimum [%d] -> [%d]\n\n", OPT_COST, deserialized.cost);
                 OPT_COST = deserialized.cost;
                 OPT_STATE = deserialized;
             }
         }
 
-        printf("[MASTER] Began terminating slaves.\n\n");
+//        printf("[MASTER] Began terminating slaves.\n\n");
 
         for (int slaveId = 1; slaveId < procTotal; slaveId++) {
-            printf("[MASTER] Terminating SLAVE-%d\n\n", slaveId);
+//            printf("[MASTER] Terminating SLAVE-%d\n\n", slaveId);
             int msg = 1;
             MPI_Send(&msg, 1, MPI_INT, slaveId, TAG_FINISHED, MPI_COMM_WORLD);
         }
+
+        chrono::steady_clock::time_point _end(chrono::steady_clock::now());
 
         printf("[MASTER] All slaves terminated.\n\n");
 
         printf("[MASTER] OPTIMAL SOLUTION:\n");
         printf("Cost: %d\n", OPT_COST);
-        printf("Path: %d\n\n", OPT_STATE.path[0]);
 
         short x, y;
         vector<pair<short, short>> taken;
@@ -743,6 +787,8 @@ int main(int argc, char *argv[]) {
 
         printf("%s\n\n", conf.c_str());
 
+        printf("Time: %f\n\n", chrono::duration_cast<chrono::duration<double>>(_end - _start).count());
+
     } else {
 
         /** Slave process */
@@ -753,7 +799,7 @@ int main(int argc, char *argv[]) {
             state_structure stateStruct;
             MPI_Recv(&stateStruct, sizeof(state_structure), MPI_CHAR, MASTER_PROCESS, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
 
-            printf("[SLAVE-%d] Received tag [%d]\n\n", procNumber, status.MPI_TAG);
+//            printf("[SLAVE-%d] Received tag [%d]\n\n", procNumber, status.MPI_TAG);
 
             if (status.MPI_TAG == TAG_FINISHED) {
                 printf("[SLAVE-%d] Finished\n\n", procNumber);
@@ -769,14 +815,14 @@ int main(int argc, char *argv[]) {
             expandStates(task, slaveExpStates, slaveExpansionDepth);
             sort(slaveExpStates.begin(), slaveExpStates.end(), compareStates);
 
-            printf("[SLAVE-%d] Tasks cnt [%lu]\n\n", procNumber, slaveExpStates.size());
+//            printf("[SLAVE-%d] Tasks cnt [%lu]\n\n", procNumber, slaveExpStates.size());
 
             /** Remove duplicate states */
             deque<State> slaveTasks;
             filterStates(slaveExpStates, slaveTasks);
 
             /** Process task using parallel cycle */
-            #pragma omp parallel for schedule(dynamic, 1) num_threads(2)
+            #pragma omp parallel for schedule(dynamic, 1) num_threads(slaveThreads)
             for (unsigned int i = 0; i < slaveTasks.size(); ++i) {
                 /** Solve the given state space subtree */
                 solve(slaveTasks[i], procNumber);
@@ -785,6 +831,8 @@ int main(int argc, char *argv[]) {
             stateStruct = OPT_STATE.toStruct();
             printf("[SLAVE-%d] Task done.\n\n", procNumber);
             printf("[SLAVE-%d] OPT_COST [%d]\n\n", procNumber, OPT_COST);
+//            printf("[SLAVE-%d] Sending state:\n", procNumber);
+//            printf("%s\n", OPT_STATE.serialize().c_str());
             MPI_Send(&stateStruct, sizeof(state_structure), MPI_CHAR, MASTER_PROCESS, TAG_DONE, MPI_COMM_WORLD);
         }
 
