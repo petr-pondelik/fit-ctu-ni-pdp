@@ -28,6 +28,7 @@ using namespace std;
 
 unsigned short OPT_COST = numeric_limits<unsigned short>::max();
 unsigned short THREAD_CNT;
+unsigned long long ITERATION = 0;
 
 // ======================================= MPI STATE STRUCTURE =========================================================
 
@@ -376,7 +377,7 @@ public:
     /** Construct state object from structure */
     State(const state_structure s): cost(s.cost) {
         for (int i = 0; i < MAX_PATH; ++i) {
-            if (s.path[i] == 0) { break; }
+            if (s.path[i] == -1) { break; }
             this->path.push_back(s.path[i]);
         }
         this->nextMove = make_pair(make_pair(s.nextMove[0], s.nextMove[1]), s.nextMove[2]);
@@ -430,8 +431,12 @@ public:
             res.board[i] = this->game.chessBoard.board[i];
         }
 
-        for (unsigned int i = 0; i < this->path.size(); i++) {
-            res.path[i] = this->path[i];
+        for (unsigned int i = 0; i < MAX_PATH; i++) {
+            if (i < this->path.size()) {
+                res.path[i] = this->path[i];
+            } else {
+                res.path[i] = -1;
+            }
         }
 
         return res;
@@ -568,7 +573,10 @@ void solve(State state, int &procNumber) {
     /** Pokud se nejezdná o počáteční krok, proveď tah */
     if (state.nextMove.second != -1) {
         state.move();
-        if (state.cost % 3 == 2) {
+//        if (state.cost % 3 == 2) {
+//            slaveProbeGlobalOptimum();
+//        }
+        if (ITERATION % 1000 == 0) {
             slaveProbeGlobalOptimum();
         }
     }
@@ -593,6 +601,8 @@ void solve(State state, int &procNumber) {
             ) {
         return;
     }
+
+    ITERATION++;
 
     /** Získej vektor dalších tahů seřazených dle ceny a rekurentně se zanoř */
     vector < pair < pair < short, short >, short >> moves = state.game.next();
