@@ -49,7 +49,7 @@ Na klastr star lze uploadovat například pomocí `scp`.
     scp data/* pondepe1@star.fit.cvut.cz:~/data
 
     # Upload solution source
-    scp 01/sequentional.cpp pondepe1@star.fit.cvut.cz:~/solution/01
+    scp mpi.cpp pondepe1@star.fit.cvut.cz:~/solution/04
 
 ### Naplánování úlohy na klastru star
 
