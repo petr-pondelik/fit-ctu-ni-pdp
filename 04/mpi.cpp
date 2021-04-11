@@ -635,7 +635,7 @@ int main(int argc, char *argv[]) {
 
     printf("[slaveThreads, masterExpansionDepth, slaveExpansionDepth] = [%d, %d, %d]\n\n", slaveThreads, masterExpansionDepth, slaveExpansionDepth);
 
-    if (procNumber == 0) {
+    if (procNumber == MASTER_PROCESS) {
 
         /** Master process */
 
