@@ -633,7 +633,7 @@ int main(int argc, char *argv[]) {
     short masterExpansionDepth = atoi(argv[2]);
     short slaveExpansionDepth = atoi(argv[3]);
 
-    printf("[slaveThreads, masterExpansionDepth, slaveExpansionDepth] = [%d, %d, %d]\n\n", slaveThreads, masterExpansionDepth, slaveExpansionDepth);
+//    printf("[slaveThreads, masterExpansionDepth, slaveExpansionDepth] = [%d, %d, %d]\n\n", slaveThreads, masterExpansionDepth, slaveExpansionDepth);
 
     if (procNumber == MASTER_PROCESS) {
 
@@ -700,11 +700,10 @@ int main(int argc, char *argv[]) {
                 if (status.MPI_TAG == TAG_UPDATE) {
                     unsigned short cost;
                     MPI_Recv(&cost, 1, MPI_UNSIGNED, MPI_ANY_SOURCE, TAG_UPDATE, MPI_COMM_WORLD, &status);
-                    printf("[MASTER] Received cost [%d] from [SLAVE-%d]\n\n", cost, status.MPI_SOURCE);
+//                    printf("[MASTER] Received cost [%d] from [SLAVE-%d]\n\n", cost, status.MPI_SOURCE);
                     if (cost > 0 && cost <= OPT_COST) {
-                        printf("[MASTER] New optimal cost [%d]\n\n", cost);
+//                        printf("[MASTER] New optimal cost [%d]\n\n", cost);
                         OPT_COST = cost;
-                        // TODO: Maybe notify all the slaves about the new optimal cost
                         for (int dest = 1; dest < procTotal; dest++)
                         {
                             if (dest != status.MPI_SOURCE) {
@@ -767,9 +766,9 @@ int main(int argc, char *argv[]) {
 
         chrono::steady_clock::time_point _end(chrono::steady_clock::now());
 
-        printf("[MASTER] All slaves terminated.\n\n");
+//        printf("[MASTER] All slaves terminated.\n\n");
 
-        printf("[MASTER] OPTIMAL SOLUTION:\n");
+//        printf("[MASTER] OPTIMAL SOLUTION:\n");
         printf("Cost: %d\n", OPT_COST);
 
         short x, y;
@@ -795,14 +794,14 @@ int main(int argc, char *argv[]) {
             taken.emplace_back(make_pair(x, y));
         }
 
-        printf("%s\n\n", conf.c_str());
+        printf("%s\n", conf.c_str());
 
-        printf("Time: %f\n\n", chrono::duration_cast<chrono::duration<double>>(_end - _start).count());
+        printf("Time: %f\n", chrono::duration_cast<chrono::duration<double>>(_end - _start).count());
 
     } else {
 
         /** Slave process */
-        printf("[SLAVE-%d]\n\n", procNumber);
+//        printf("[SLAVE-%d]\n\n", procNumber);
 
         while (true) {
             MPI_Status status;
@@ -812,12 +811,12 @@ int main(int argc, char *argv[]) {
 //            printf("[SLAVE-%d] Received tag [%d]\n\n", procNumber, status.MPI_TAG);
 
             if (status.MPI_TAG == TAG_FINISHED) {
-                printf("[SLAVE-%d] Finished\n\n", procNumber);
+//                printf("[SLAVE-%d] Finished\n\n", procNumber);
                 break;
             }
 
             State task = State(stateStruct);
-            printf("[SLAVE-%d] Received task:\n%s\n\n", procNumber, task.serialize().c_str());
+//            printf("[SLAVE-%d] Received task:\n%s\n\n", procNumber, task.serialize().c_str());
 
             vector<State> slaveExpStates;
 
@@ -839,8 +838,8 @@ int main(int argc, char *argv[]) {
             }
 
             stateStruct = OPT_STATE.toStruct();
-            printf("[SLAVE-%d] Task done.\n\n", procNumber);
-            printf("[SLAVE-%d] OPT_COST [%d]\n\n", procNumber, OPT_COST);
+//            printf("[SLAVE-%d] Task done.\n\n", procNumber);
+//            printf("[SLAVE-%d] OPT_COST [%d]\n\n", procNumber, OPT_COST);
 //            printf("[SLAVE-%d] Sending state:\n", procNumber);
 //            printf("%s\n", OPT_STATE.serialize().c_str());
             MPI_Send(&stateStruct, sizeof(state_structure), MPI_CHAR, MASTER_PROCESS, TAG_DONE, MPI_COMM_WORLD);

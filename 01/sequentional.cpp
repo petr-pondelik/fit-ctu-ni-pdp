@@ -301,7 +301,9 @@ void solve(Game game, pair<pair<short, short>, short> dest, unsigned int cost, v
         OPT_COST = cost;
         OPT_CONFIGURATION = conf;
     }
-    ITERATION++;
+
+//    ITERATION++;
+
     /** Pokud řešení nemůže být lepší než stávající nejlepší, nebo lepší či rovno horní mezi, ukončí větev */
     if ( ((cost + game.chessBoard.pawnsCnt) >= OPT_COST) || ((cost + game.chessBoard.pawnsCnt) > game.chessBoard.upperBound) ) {
         return;
@@ -361,6 +363,6 @@ int main(int argc, char *argv[]) {
 
     cout << "=======================" << endl;
     cout << "Best cost: " << OPT_COST << endl;
-    cout << "Iterations: " << ITERATION << endl;
+//    cout << "Iterations: " << ITERATION << endl;
     cout << "Time: " << chrono::duration_cast<chrono::duration<double>>(_end - _start).count() << endl;
 }

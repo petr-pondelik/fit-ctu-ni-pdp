@@ -424,8 +424,8 @@ int main(int argc, char *argv[]) {
     Game game = Game();
     game.initGame(k, upperbound, boardStr);
 
-    cout << "Initial state: " << endl;
-    game.chessBoard.print();
+//    cout << "Initial state: " << endl;
+//    game.chessBoard.print();
 
     /** Vytvoření kořenu stavového prostoru */
     State initialState = State(game, make_pair(make_pair(-1, -1), -1), 0, OPT_CONFIGURATION);
@@ -453,9 +453,9 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    for (unsigned int i = 0; i < primalStatesUnique.size(); ++i) {
-        primalStatesUnique[i].game.chessBoard.print();
-    }
+//    for (unsigned int i = 0; i < primalStatesUnique.size(); ++i) {
+//        primalStatesUnique[i].game.chessBoard.print();
+//    }
 
     /** Paralelní zpracování pomocí paralelního cyklu */
     #pragma omp parallel for schedule(dynamic, 1) num_threads(THREAD_CNT)

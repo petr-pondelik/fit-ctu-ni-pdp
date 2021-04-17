@@ -7,7 +7,7 @@ TODO
 ### Kompilace a spuštění MPI programu
 
     mpic++ -o ./output/mpi.out mpi.cpp -Wall -pedantic -std=c++11 -fopenmp -O3
-    mpirun -np 3 ./output/mpi.out
+    mpirun -np 3 ./output/mpi.out 2 1 3 < ./../data/vaj11.txt >> results/measurement.txt
 
 ## Klastr star.fit.cvut.cz
 
