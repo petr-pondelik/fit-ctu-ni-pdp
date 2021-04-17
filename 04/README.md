@@ -13,7 +13,7 @@ TODO
 
 ### Připojení pomocí SSH
 
-    ssh pondepe1@fit.cvut.cz
+    ssh pondepe1@star.fit.cvut.cz
 
 ### Adresářová struktura
 
