@@ -352,7 +352,7 @@ void getPrimalStates(State state, vector <State> &states) {
     if (
             ((state.depth + state.game.chessBoard.pawnsCnt) >= OPT_COST) ||
             ((state.depth + state.game.chessBoard.pawnsCnt) > state.game.chessBoard.upperBound)
-            || state.depth > 1
+            || state.depth > 2
             ) {
         return;
     }
@@ -361,7 +361,7 @@ void getPrimalStates(State state, vector <State> &states) {
      * Při dosažení požadované hloubky ulož získaný stav jakožto kořen podstromu stavového prostoru.
      * Vynoř se z rekurze.
      * */
-    if (state.depth >= 1) {
+    if (state.depth >= 2) {
         state.setNextMove(make_pair(make_pair(-1, -1), -1));
         states.push_back(state);
         return;

@@ -506,7 +506,7 @@ void expandStates(State state, vector <State> &states, short &depth) {
     if (
             ((state.cost + state.game.chessBoard.pawnsCnt) >= OPT_COST) ||
             ((state.cost + state.game.chessBoard.pawnsCnt) > state.game.chessBoard.upperBound)
-            || state.cost > 3
+            || state.cost > depth
             ) {
         return;
     }
